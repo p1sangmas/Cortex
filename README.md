@@ -1,6 +1,8 @@
 # 🧠 Cortex - Agentic AI-Powered Knowledge Base Assistant
 
 <div align="center">
+   <img src="assets/logo.png" alt="Cortex Logo" width="200">
+   <br>
   <img src="https://img.shields.io/badge/version-1.1.0-green?style=flat-square" alt="Version">
   <img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="License">
   <img src="https://img.shields.io/badge/platform-Docker-blue?style=flat-square" alt="Platform">
