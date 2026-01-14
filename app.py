@@ -1,5 +1,5 @@
 """
-DocuMind - AI-Powered Knowledge Base Assistant
+Cortex - AI-Powered Knowledge Base Assistant
 Main Streamlit Application
 """
 
@@ -27,8 +27,8 @@ from config.settings import PAGE_TITLE, PAGE_ICON
 setup_logging()
 logger = logging.getLogger(__name__)
 
-class DocuMindApp:
-    """Main application class for DocuMind Knowledge Base Assistant"""
+class CortexApp:
+    """Main application class for Cortex Knowledge Base Assistant"""
     
     def __init__(self):
         self.document_processor = DocumentProcessor()
@@ -91,7 +91,7 @@ class DocuMindApp:
         )
         
         # Main header
-        st.title("🧠 DocuMind")
+        st.title("🧠 Cortex")
         st.subheader("AI-Powered Knowledge Base Assistant")
         
         # Sidebar
@@ -614,10 +614,10 @@ class DocuMindApp:
     
     def _render_about(self):
         """Render about and help information"""
-        st.header("ℹ️ About DocuMind")
+        st.header("ℹ️ About Cortex")
         
         st.markdown("""
-        **DocuMind** is an AI-powered knowledge base assistant that transforms your static PDF documents 
+        **Cortex** is an AI-powered knowledge base assistant that transforms your static PDF documents 
         into an interactive, searchable knowledge base. Ask questions in natural language and get 
         contextual answers backed by your organizational documents.
         
@@ -773,7 +773,7 @@ class DocuMindApp:
 
 def main():
     """Main application entry point"""
-    app = DocuMindApp()
+    app = CortexApp()
     app.run()
 
 if __name__ == "__main__":

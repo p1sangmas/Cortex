@@ -1,0 +1,124 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "web-search",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "3bee25e9-970d-4ca5-ba3b-28bd718c6315",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "documind-websearch"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.duckduckgo.com/?q={{ encodeURIComponent($('Webhook').item.json.body.query) }}&format=json&pretty=1",
+        "options": {}
+      },
+      "id": "6f9d147e-50fa-42e3-bfc6-c1d8b70714e2",
+      "name": "DuckDuckGo Search",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        208,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Simple version: Return abstract for RAG with helpful error messages\nconst query = $('Webhook').item.json.body.query || '';\n\n// Parse response\nlet responseData = items[0].json;\nlet searchData;\n\ntry {\n  searchData = typeof responseData.data === 'string' \n    ? JSON.parse(responseData.data) \n    : responseData.data || responseData;\n} catch (e) {\n  searchData = {};\n}\n\nconst results = [];\n\n// Always use AbstractText if available (best for RAG)\nif (searchData.AbstractText) {\n  results.push({\n    title: searchData.Heading || 'Wikipedia',\n    snippet: searchData.AbstractText,\n    url: searchData.AbstractURL || '',\n    source: 'Wikipedia',\n    rank: 1\n  });\n  \n  // Optional: Add capital from Infobox if query asks about capital\n  if (query.toLowerCase().includes('capital') && searchData.Infobox && searchData.Infobox.content) {\n    const capitalInfo = searchData.Infobox.content.find(item => item.label === 'Capital');\n    if (capitalInfo) {\n      results[0].snippet += `\\n\\nThe capital of ${searchData.Heading || 'this country'} is ${capitalInfo.value}.`;\n    }\n  }\n} else {\n  // Fallback to other content\n  if (searchData.Results && Array.isArray(searchData.Results) && searchData.Results.length > 0) {\n    searchData.Results.slice(0, 2).forEach((result, idx) => {\n      if (result.Text && result.FirstURL) {\n        const cleanText = result.Text.replace(/<[^>]*>/g, '');\n        results.push({\n          title: cleanText,\n          snippet: cleanText,\n          url: result.FirstURL,\n          source: 'DuckDuckGo',\n          rank: idx + 1\n        });\n      }\n    });\n  }\n}\n\n// Add helpful message when no results found\nlet helpMessage = null;\nif (results.length === 0) {\n  helpMessage = 'The web search API (DuckDuckGo Instant Answer) could not find results for this query. ' +\n                'This API works best for well-known topics with Wikipedia entries. ' +\n                'Try rephrasing your question to be more specific (e.g., \"Python programming language\" instead of \"what is python?\").';\n}\n\nreturn [{\n  json: {\n    query: query,\n    source: 'duckduckgo',\n    results: results,\n    count: results.length,\n    success: results.length > 0,\n    help_message: helpMessage\n  }\n}];"
+      },
+      "id": "79401cf9-1201-467a-8faf-43afcce61f6a",
+      "name": "Parse Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        400,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "f7212920-5586-45a7-97e4-3aca3059c2bc",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        608,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "DuckDuckGo Search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DuckDuckGo Search": {
+      "main": [
+        [
+          {
+            "node": "Parse Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Results": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {
+    "Webhook": [
+      {
+        "headers": {
+          "host": "documind-n8n:5678",
+          "user-agent": "python-requests/2.32.5",
+          "accept-encoding": "gzip, deflate, zstd",
+          "accept": "*/*",
+          "connection": "keep-alive",
+          "content-length": "63",
+          "content-type": "application/json"
+        },
+        "params": {},
+        "query": {},
+        "body": {
+          "query": "what is the capital of Malaysia?",
+          "max_results": 5
+        },
+        "webhookUrl": "http://documind-n8n:5678/webhook/web-search",
+        "executionMode": "production"
+      }
+    ]
+  },
+  "meta": {
+    "instanceId": "9e59b40a7389101be7ffb2c3b0d63331d2bd85aa21ef87fed65d3cd2c7d93812"
+  }
+}

@@ -1,7 +1,7 @@
-# filepath: /Users/fakhrulfauzi/Documents/Projects/DocuMind/DOCKER.md
-# Docker Setup for DocuMind
+# filepath: /Users/fakhrulfauzi/Documents/Projects/Cortex/DOCKER.md
+# Docker Setup for Cortex
 
-This guide explains how to run DocuMind using Docker, allowing for easy deployment on any operating system (Windows, macOS, or Linux).
+This guide explains how to run Cortex using Docker, allowing for easy deployment on any operating system (Windows, macOS, or Linux).
 
 ## Prerequisites
 
@@ -29,7 +29,7 @@ chmod +x run_docker.sh
 ./run_docker.sh
 ```
 
-Select option 1 from the menu to start DocuMind.
+Select option 1 from the menu to start Cortex.
 
 ## Manual Setup
 
@@ -92,7 +92,7 @@ All data is persisted in the following directories:
 
 ## GPU Support
 
-By default, DocuMind runs in CPU mode, which is compatible with all systems. If you have an NVIDIA GPU, you can enable GPU acceleration:
+By default, Cortex runs in CPU mode, which is compatible with all systems. If you have an NVIDIA GPU, you can enable GPU acceleration:
 
 ### Automatic GPU Detection (Recommended)
 

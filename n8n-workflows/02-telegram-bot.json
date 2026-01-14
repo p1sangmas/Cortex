@@ -1,0 +1,210 @@
+{
+  "name": "Cortex Telegram Bot",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": ["message"]
+      },
+      "id": "telegram-trigger-node",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "cortex-telegram",
+      "credentials": {
+        "telegramApi": {
+          "id": "1",
+          "name": "Telegram API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.message.text }}",
+              "operation": "startsWith",
+              "value2": "/"
+            }
+          ]
+        }
+      },
+      "id": "check-command-node",
+      "name": "Check if Command",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.message.chat.id }}",
+        "text": "=Welcome to Cortex! 🧠\\n\\nCommands:\\n/start - Show this help\\n/status - Check system status\\n\\nJust send me any question about your documents!",
+        "additionalFields": {}
+      },
+      "id": "send-help-node",
+      "name": "Send Help Message",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [650, 200],
+      "credentials": {
+        "telegramApi": {
+          "id": "1",
+          "name": "Telegram API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.message.chat.id }}",
+        "text": "🤔 Searching documents...",
+        "additionalFields": {}
+      },
+      "id": "send-processing-node",
+      "name": "Send Processing Message",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [650, 400],
+      "credentials": {
+        "telegramApi": {
+          "id": "1",
+          "name": "Telegram API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://cortex:8080/api/query",
+        "authentication": "none",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "={{ $json.message.text }}"
+            },
+            {
+              "name": "session_id",
+              "value": "=telegram_{{ $json.message.chat.id }}"
+            },
+            {
+              "name": "mode",
+              "value": "agentic"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "call-cortex-node",
+      "name": "Call Cortex API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [850, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Format Cortex response for Telegram\nconst response = items[0].json;\nconst answer = response.answer || 'No answer available.';\nconst sources = response.sources || [];\nconst mode = response.mode || 'unknown';\nconst executionTime = response.execution_time || 0;\n\n// Build message with answer and sources\nlet message = `📚 Answer (${mode} mode):\\n\\n${answer}\\n`;\n\nif (sources.length > 0) {\n  message += '\\n\\n📄 Sources:\\n';\n  sources.slice(0, 3).forEach((source, idx) => {\n    const docName = source.document || source.original_filename || 'Unknown';\n    const page = source.page_number || source.page;\n    if (page) {\n      message += `${idx + 1}. ${docName} (Page ${page})\\n`;\n    } else {\n      message += `${idx + 1}. ${docName}\\n`;\n    }\n  });\n}\n\nmessage += `\\n⏱️ Time: ${executionTime.toFixed(1)}s`;\n\nreturn [{\n  json: {\n    chatId: items[1].json.message.chat.id,\n    message: message\n  }\n}];"
+      },
+      "id": "format-response-node",
+      "name": "Format Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1050, 400]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chatId }}",
+        "text": "={{ $json.message }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "send-answer-node",
+      "name": "Send Answer",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [1250, 400],
+      "credentials": {
+        "telegramApi": {
+          "id": "1",
+          "name": "Telegram API"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Check if Command",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check if Command": {
+      "main": [
+        [
+          {
+            "node": "Send Help Message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Processing Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Processing Message": {
+      "main": [
+        [
+          {
+            "node": "Call Cortex API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Cortex API": {
+      "main": [
+        [
+          {
+            "node": "Format Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Response": {
+      "main": [
+        [
+          {
+            "node": "Send Answer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {},
+  "versionId": "1",
+  "id": "cortex-telegram-bot",
+  "meta": {
+    "instanceId": "cortex"
+  },
+  "tags": []
+}

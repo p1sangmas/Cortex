@@ -1,4 +1,4 @@
-"""Configuration settings for DocuMind Knowledge Base Assistant"""
+"""Configuration settings for Cortex Knowledge Base Assistant"""
 
 import os
 from pathlib import Path
@@ -31,12 +31,20 @@ KEYWORD_WEIGHT = 0.3
 OLLAMA_MODEL = "llama3.2:3b"
 
 # Determine Ollama URL based on environment
-# In Docker, Ollama is accessible via service name; otherwise use localhost
+# Check environment variable first, then fall back to defaults
 import os
-OLLAMA_BASE_URL = "http://ollama:11434" if os.environ.get("DOCKER_ENV") == "true" else "http://localhost:11434"
+OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL") or (
+    "http://ollama:11434" if os.environ.get("DOCKER_ENV") == "true" else "http://localhost:11434"
+)
+
+# n8n configuration (for workflow automation)
+# Check environment variable first, then fall back to default
+N8N_BASE_URL = os.environ.get("N8N_BASE_URL") or (
+    "http://cortex-n8n:5678" if os.environ.get("DOCKER_ENV") == "true" else "http://localhost:5678"
+)
 
 # Streamlit configuration
-PAGE_TITLE = "DocuMind - AI Knowledge Assistant"
+PAGE_TITLE = "Cortex - AI Knowledge Assistant"
 PAGE_ICON = "🧠"
 
 # Vector store settings

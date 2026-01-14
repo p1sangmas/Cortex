@@ -1,5 +1,5 @@
 """
-DocuMind - AI-Powered Knowledge Base Assistant
+Cortex - AI-Powered Knowledge Base Assistant
 Flask API Server for Web Interface
 """
 
@@ -19,13 +19,17 @@ from werkzeug.utils import secure_filename
 from src.document_processor import DocumentProcessor, MetadataEnhancer
 from src.chunking import SemanticChunker
 from src.retriever import HybridRetriever
-from src.llm_handler import AdaptiveQAChain
+from src.llm_handler import AdaptiveQAChain, OllamaHandler
 from src.evaluator import RAGEvaluator, FeedbackProcessor
 from src.utils import (
     setup_logging, timing_decorator, generate_session_id,
     ValidationUtils, safe_execute
 )
 from config.settings import PAGE_TITLE, AUTO_LOAD_DOCUMENTS, DOCUMENTS_DIR
+
+# Import agentic components
+from src.agent.orchestrator import AgenticOrchestrator
+from src.citation_enhancer import CitationEnhancer
 
 # Setup logging
 setup_logging()
@@ -47,8 +51,8 @@ def convert_numpy_types(obj):
         return tuple(convert_numpy_types(item) for item in obj)
     return obj
 
-class DocuMindAPI:
-    """API wrapper for DocuMind Knowledge Base Assistant"""
+class CortexAPI:
+    """API wrapper for Cortex Knowledge Base Assistant"""
     
     def __init__(self):
         self.document_processor = DocumentProcessor()
@@ -58,65 +62,185 @@ class DocuMindAPI:
         self.qa_chain = AdaptiveQAChain()
         self.evaluator = RAGEvaluator()
         self.feedback_processor = FeedbackProcessor()
-        
+
+        # Initialize agentic components
+        try:
+            self.llm_handler = OllamaHandler()
+            self.agentic_orchestrator = AgenticOrchestrator(
+                retriever=self.retriever,
+                qa_chain=self.qa_chain,
+                llm_handler=self.llm_handler,
+                use_llm_fallback=True
+            )
+            self.citation_enhancer = CitationEnhancer()
+            logger.info("Agentic RAG mode initialized successfully")
+        except Exception as e:
+            logger.warning(f"Agentic RAG mode initialization failed: {e}")
+            self.agentic_orchestrator = None
+            self.citation_enhancer = None
+
         # Track processed files
         self.processed_files = []
-        
+
         # Load documents on startup if auto-load is enabled
         if AUTO_LOAD_DOCUMENTS:
             self._auto_load_documents()
     
     @timing_decorator
-    def process_query(self, query: str, session_id: str = None) -> Dict[str, Any]:
-        """Process user query and generate response"""
+    def process_query(self, query: str, session_id: str = None, mode: str = 'traditional') -> Dict[str, Any]:
+        """
+        Process user query and generate response
+
+        Args:
+            query: User query string
+            session_id: Session identifier
+            mode: 'traditional' or 'agentic' (default: 'traditional')
+
+        Returns:
+            Dictionary with answer, sources, and metadata
+        """
         try:
-            # Retrieve relevant documents
             start_time = time.time()
-            context_documents = self.retriever.retrieve(query)
-            retrieval_time = time.time() - start_time
-            
-            if not context_documents:
-                return {"error": "No relevant documents found for your query."}
-            
-            # Get conversation history
-            conversation_history = []
-            # Note: In a real implementation, we would store and retrieve conversation history by session_id
-            
-            # Generate response
-            start_time = time.time()
-            response = self.qa_chain.process_query(
-                query, 
-                context_documents, 
-                conversation_history[-10:] if conversation_history else []  # Last 10 messages
-            )
-            generation_time = time.time() - start_time
-            
-            if response.get('error'):
-                return {"error": response.get('error')}
-            
-            # Add the response to the result
-            result = {
-                "answer": response.get('answer', 'No answer generated.'),
-                "confidence": response.get('confidence', 'unknown'),
-                "sources": response.get('sources', []),
-                "retrieval_time": retrieval_time,
-                "generation_time": generation_time,
-                "total_time": retrieval_time + generation_time
-            }
-            
-            # Add evaluation metrics
-            total_time = retrieval_time + generation_time
-            evaluation_results = self.evaluator.evaluate_response(
-                query, response, context_documents, response_time=total_time
-            )
-            
-            result["evaluation"] = evaluation_results
-            
-            return result
-            
+
+            # Use agentic mode if available and requested
+            if mode == 'agentic' and self.agentic_orchestrator:
+                return self._process_query_agentic(query, session_id, start_time)
+            else:
+                # Fall back to traditional mode
+                if mode == 'agentic':
+                    logger.warning("Agentic mode requested but not available, falling back to traditional mode")
+                return self._process_query_traditional(query, session_id, start_time)
+
         except Exception as e:
             logger.error(f"Error processing query: {e}")
             return {"error": f"An error occurred while processing your query: {str(e)}"}
+
+    def _process_query_traditional(self, query: str, session_id: str, start_time: float) -> Dict[str, Any]:
+        """Process query using traditional RAG"""
+        # Retrieve relevant documents
+        retrieval_start = time.time()
+        context_documents = self.retriever.retrieve(query)
+        retrieval_time = time.time() - retrieval_start
+
+        if not context_documents:
+            return {"error": "No relevant documents found for your query."}
+
+        # Get conversation history
+        conversation_history = []
+        # Note: In a real implementation, we would store and retrieve conversation history by session_id
+
+        # Generate response
+        generation_start = time.time()
+        response = self.qa_chain.process_query(
+            query,
+            context_documents,
+            conversation_history[-10:] if conversation_history else []  # Last 10 messages
+        )
+        generation_time = time.time() - generation_start
+
+        if response.get('error'):
+            return {"error": response.get('error')}
+
+        # Add the response to the result
+        result = {
+            "answer": response.get('answer', 'No answer generated.'),
+            "confidence": response.get('confidence', 'unknown'),
+            "sources": response.get('sources', []),
+            "retrieval_time": retrieval_time,
+            "generation_time": generation_time,
+            "total_time": retrieval_time + generation_time,
+            "mode": "traditional"
+        }
+
+        # Add evaluation metrics
+        total_time = retrieval_time + generation_time
+        evaluation_results = self.evaluator.evaluate_response(
+            query, response, context_documents, response_time=total_time
+        )
+
+        result["evaluation"] = evaluation_results
+
+        return result
+
+    def _process_query_agentic(self, query: str, session_id: str, start_time: float) -> Dict[str, Any]:
+        """Process query using agentic RAG"""
+        try:
+            # Process with agentic orchestrator
+            agentic_response = self.agentic_orchestrator.process_query(
+                query,
+                session_context={'session_id': session_id}
+            )
+
+            # Enhance citations if enhancer is available
+            if self.citation_enhancer and agentic_response.sources:
+                try:
+                    enhanced_sources = []
+                    for source in agentic_response.sources:
+                        enhanced_sources.append(source.to_dict())
+                    agentic_response.sources = enhanced_sources
+                except Exception as e:
+                    logger.warning(f"Citation enhancement failed: {e}")
+
+            # Calculate timings
+            total_time = time.time() - start_time
+
+            # Calculate confidence level from kb_confidence (same logic as traditional mode)
+            kb_confidence = agentic_response.metadata.get('kb_confidence', 0.0)
+            if kb_confidence is None:
+                kb_confidence = 0.0
+
+            if kb_confidence >= 0.7:
+                confidence = 'high'
+            elif kb_confidence >= 0.4:
+                confidence = 'medium'
+            else:
+                confidence = 'low'
+
+            # Add execution time to metadata
+            agentic_response.metadata['execution_time'] = total_time
+
+            # Run evaluation (same as traditional mode)
+            # Build a response dict in the format expected by evaluator
+            response_for_eval = {
+                'answer': agentic_response.answer,
+                'confidence': confidence,
+                'sources': agentic_response.sources
+            }
+
+            # Get context documents from sources for evaluation
+            context_documents = []
+            for source in agentic_response.sources:
+                if isinstance(source, dict):
+                    context_documents.append({
+                        'content': source.get('excerpt', ''),
+                        'metadata': source.get('metadata', {})
+                    })
+
+            # Run evaluation
+            evaluation_results = self.evaluator.evaluate_response(
+                query, response_for_eval, context_documents, response_time=total_time
+            )
+
+            # Format result
+            result = {
+                "answer": agentic_response.answer,
+                "sources": agentic_response.sources,
+                "confidence": confidence,  # Add confidence
+                "evaluation": evaluation_results,  # Add evaluation metrics
+                "reasoning_trace": agentic_response.reasoning_trace,
+                "metadata": agentic_response.metadata,
+                "execution_time": total_time,
+                "total_time": total_time,
+                "mode": "agentic"
+            }
+
+            return result
+
+        except Exception as e:
+            logger.error(f"Agentic query processing failed: {e}")
+            # Fall back to traditional mode
+            logger.info("Falling back to traditional mode")
+            return self._process_query_traditional(query, session_id, start_time)
     
     def process_feedback(self, query: str, answer: str, rating: int, feedback_text: str, session_id: str) -> Dict[str, Any]:
         """Process user feedback on response"""
@@ -167,15 +291,15 @@ class DocuMindAPI:
                 logger.info(f"Temporary file created: {tmp_file_path}, size: {os.path.getsize(tmp_file_path)} bytes")
             
             try:
-                # Extract text
-                text, method, metadata = self.document_processor.extract_with_fallback(tmp_file_path)
-                
+                # Extract text with page numbers
+                pages_data, method, metadata = self.document_processor.extract_with_pages(tmp_file_path)
+
                 # Update metadata with file info
                 filename = file.filename
                 display_name = filename
                 if display_name.lower().endswith('.pdf'):
                     display_name = display_name[:-4]
-                
+
                 metadata.update({
                     'original_filename': filename,
                     'display_name': display_name,
@@ -183,13 +307,35 @@ class DocuMindAPI:
                     'extraction_method': method,
                     'title': display_name
                 })
-                
-                # Chunk text
-                chunks = self.chunker.chunk_by_semantic_similarity(text)
-                
-                # Enhance with metadata
-                enhanced_chunks = self.metadata_enhancer.enhance_chunks(chunks, metadata)
-                
+
+                # Chunk text with page tracking
+                chunks = self.chunker.chunk_with_page_tracking(pages_data)
+
+                # Enhance with metadata while preserving page numbers
+                enhanced_chunks = []
+                for i, chunk_data in enumerate(chunks):
+                    # Merge page metadata with document metadata
+                    chunk_metadata = {
+                        'source_document': metadata['filename'],
+                        'chunk_index': i,
+                        'chunk_length': len(chunk_data['content']),
+                        'word_count': len(chunk_data['content'].split()),
+                        'creation_date': metadata.get('creation_date'),
+                        'author': metadata.get('author', 'Unknown'),
+                        'page_count': metadata.get('page_count', 0),
+                        'original_filename': metadata.get('original_filename', metadata.get('filename')),
+                        # Preserve page number from chunking
+                        'page_number': chunk_data.get('page_number', 0),
+                        'page': chunk_data.get('page_number', 0),  # Duplicate for compatibility
+                    }
+                    # Merge with chunk's own metadata
+                    chunk_metadata.update(chunk_data.get('metadata', {}))
+
+                    enhanced_chunks.append({
+                        'content': chunk_data['content'],
+                        'metadata': chunk_metadata
+                    })
+
                 # Add to retrieval system
                 self.retriever.add_documents(enhanced_chunks)
                 
@@ -352,7 +498,7 @@ app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 
 # Initialize API
-api = DocuMindAPI()
+api = CortexAPI()
 
 # Serve web frontend
 @app.route('/')
@@ -404,23 +550,29 @@ def status():
 @app.route('/api/query', methods=['POST'])
 def process_query():
     data = request.json
-    
+
     if not data or 'query' not in data:
         return jsonify({'error': 'No query provided'}), 400
-    
+
     query = data['query']
     session_id = data.get('session_id', generate_session_id())
-    
+    mode = data.get('mode', 'traditional')  # 'traditional' or 'agentic'
+
+    # Validate mode
+    if mode not in ['traditional', 'agentic']:
+        mode = 'traditional'
+        logger.warning(f"Invalid mode requested, falling back to traditional")
+
     # Validate query
     is_valid, validation_message = ValidationUtils.validate_query(query)
     if not is_valid:
         return jsonify({'error': validation_message}), 400
-    
-    result = api.process_query(query, session_id)
-    
+
+    result = api.process_query(query, session_id, mode)
+
     if 'error' in result:
         return jsonify(convert_numpy_types(result)), 500
-    
+
     # Convert numpy types to JSON-serializable types
     result = convert_numpy_types(result)
     return jsonify(result)
@@ -525,6 +677,83 @@ def get_files():
         return jsonify(convert_numpy_types(result))
     except Exception as e:
         logger.error(f"Unexpected error in /api/files endpoint: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/analytics', methods=['GET'])
+def get_analytics():
+    """Get enhanced analytics for daily summary"""
+    try:
+        from datetime import datetime
+        import os
+
+        # Get collection info
+        collection_info = api.get_collection_info()
+        files_result = api.get_processed_files()
+
+        total_chunks = collection_info.get('document_count', 0)
+        files_list = files_result.get('files', [])
+        total_files = len(files_list)
+
+        # Calculate storage metrics
+        total_storage_bytes = sum(f.get('size', 0) for f in files_list)
+        total_storage_mb = total_storage_bytes / (1024 * 1024)
+
+        # Get database size
+        db_path = 'data/vectorstore/chroma.sqlite3'
+        db_size_mb = 0
+        if os.path.exists(db_path):
+            db_size_mb = os.path.getsize(db_path) / (1024 * 1024)
+
+        # Calculate insights
+        avg_chunks = round(total_chunks / total_files, 1) if total_files > 0 else 0
+
+        # Get last activity (most recent file timestamp)
+        last_activity = None
+        if files_list:
+            # Sort by timestamp if available
+            sorted_files = sorted(files_list, key=lambda f: f.get('timestamp', ''), reverse=True)
+            last_activity = sorted_files[0].get('timestamp') if sorted_files else None
+
+        # Status determination (healthy if documents exist and chunks > 0)
+        if total_chunks > 0:
+            system_status = "healthy"
+            status_emoji = "🟢"
+        elif total_files > 0 and total_chunks == 0:
+            system_status = "warning"
+            status_emoji = "🟡"
+        else:
+            system_status = "idle"
+            status_emoji = "🔵"
+
+        # Build analytics response
+        analytics = {
+            "timestamp": datetime.now().isoformat(),
+            "system_status": system_status,
+            "status_emoji": status_emoji,
+            "documents": {
+                "total_files": total_files,
+                "total_chunks": total_chunks,
+                "avg_chunks_per_file": avg_chunks,
+                "total_storage_mb": round(total_storage_mb, 2),
+                "files": files_list
+            },
+            "database": {
+                "size_mb": round(db_size_mb, 2),
+                "collection": "documents",
+                "embeddings_count": total_chunks
+            },
+            "system": {
+                "mode": "agentic" if api.agentic_orchestrator else "traditional",
+                "embedding_model": "all-MiniLM-L6-v2",
+                "last_activity": last_activity
+            }
+        }
+
+        logger.info("Enhanced analytics data retrieved successfully")
+        return jsonify(analytics)
+
+    except Exception as e:
+        logger.error(f"Error getting analytics: {e}")
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':

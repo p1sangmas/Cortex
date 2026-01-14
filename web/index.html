@@ -1,760 +1,212 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DocuMind - AI Knowledge Assistant</title>
-    <link rel="stylesheet" href="css/modern.css">
-    <link rel="stylesheet" href="css/modern-notifications.css">
-    <link rel="stylesheet" href="css/modern-toast.css">
-    <link rel="stylesheet" href="css/modern-metrics.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="icon" type="image/png" href="assets/favicon.png">
+    <title>Cortex</title>
+    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Styles -->
+    <link rel="stylesheet" href="css/chatgpt-style.css">
+    <!-- Markdown parsing -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@2.4.3/dist/purify.min.js"></script>
+    <!-- Highlight.js for code syntax highlighting -->
+    <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/atom-one-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
 </head>
+
 <body>
-    <div class="app-container">
-        <!-- Sidebar -->
-        <aside class="sidebar">
-            <div class="sidebar-header">
-                <img src="assets/logo.png" alt="DocuMind Logo" class="logo">
-                <h2>DocuMind</h2>
-            </div>
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+        <button class="new-chat-btn" onclick="location.reload()">
+            <i class="fas fa-plus"></i>
+            New chat
+        </button>
 
-            <div class="sidebar-section">
-                <h3>Document Management</h3>
-                <div class="upload-container">
-                    <label for="file-upload" class="upload-btn">
-                        <i class="fas fa-file-pdf"></i> Upload PDF Documents
-                    </label>
-                    <input type="file" id="file-upload" accept=".pdf" multiple>
-                    <div id="selected-files-container" class="selected-files-container"></div>
-                    <button id="process-docs-btn" class="primary-btn" disabled>
-                        <i class="fas fa-cog"></i> Process Documents
-                    </button>
-                </div>
-            </div>
+        <div class="sidebar-section">
+            <!-- Items removed as requested -->
+        </div>
 
-            <div class="sidebar-section">
-                <h3>Knowledge Base Status</h3>
-                <div class="metric">
-                    <span class="metric-label">Documents Indexed</span>
-                    <span id="doc-count" class="metric-value">0</span>
-                </div>
-                <div class="metric">
-                    <span class="metric-label">Embedding Model</span>
-                    <span id="embed-model" class="metric-value">all-MiniLM-L6-v2</span>
-                </div>
+        <div class="sidebar-footer">
+            <div class="sidebar-item" id="system-info-trigger">
+                <i class="fas fa-cog"></i>
+                Settings
             </div>
-
-            <div class="sidebar-section" id="processed-docs-container">
-                <h3>Processed Documents</h3>
-                <div id="processed-files-list" class="files-list"></div>
+            <div class="sidebar-item" id="user-btn-trigger">
+                <i class="fas fa-user"></i>
+                User
             </div>
+            <div class="sidebar-item" id="view-docs-btn" style="font-size: 0.75rem; color: #666; cursor: pointer;">
+                <span id="doc-count">0</span> documents loaded
+            </div>
+        </div>
+    </div>
 
-            <div class="sidebar-section">
-                <h3>Collection Management</h3>
-                <div class="clear-kb-container">
-                    <button id="clear-kb-btn" class="primary-btn">
-                        <i class="fas fa-trash-alt"></i> Clear Knowledge Base
-                    </button>
-                    <div id="confirm-clear" class="confirm-clear hidden">
-                        <p class="confirm-instruction">This action cannot be undone!</p>
-                        <div class="confirm-checkbox">
-                            <input type="checkbox" id="confirm-clear-checkbox">
-                            <label for="confirm-clear-checkbox">I understand this will delete all documents</label>
-                        </div>
-                        <button id="confirm-clear-btn" disabled class="primary-btn">
-                            <i class="fas fa-exclamation-triangle"></i> Confirm Delete
-                        </button>
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Top Bar (Model Selector) -->
+        <div class="top-bar">
+            <div class="model-selector" id="model-selector-btn">
+                <span id="current-model-text">Traditional</span>
+                <i class="fas fa-chevron-down"></i>
+            </div>
+            <!-- Tooltip/Dropdown Menu would go here (simulated with standard select for now or custom div) -->
+            <div id="model-dropdown" class="model-dropdown hidden">
+                <div class="model-option selected" data-value="traditional">
+                    <div class="model-icon"><i class="fas fa-bolt"></i></div>
+                    <div class="model-info">
+                        <div class="model-name">Traditional</div>
+                        <div class="model-desc">Standard Retrieval Augmented Generation</div>
                     </div>
+                    <i class="fas fa-check check-icon"></i>
+                </div>
+                <div class="model-option" data-value="agentic">
+                    <div class="model-icon"><i class="fas fa-robot"></i></div>
+                    <div class="model-info">
+                        <div class="model-name">Agentic</div>
+                        <div class="model-desc">Multi-step reasoning and tool use</div>
+                    </div>
+                    <i class="fas fa-check check-icon hidden"></i>
                 </div>
             </div>
+        </div>
 
-            <div class="sidebar-section">
-                <h3>System Status</h3>
-                <div class="metric">
-                    <span class="metric-label">
-                        <span id="ollama-status" class="status-indicator"></span> Ollama
-                    </span>
-                    <span class="metric-value">
-                        <span id="ollama-value">Checking...</span>
-                    </span>
+        <!-- Empty State -->
+        <div id="empty-state" class="empty-state">
+            <h1>What's on your mind today?</h1>
+        </div>
+
+        <!-- Chat Messages -->
+        <!-- Chat Messages -->
+        <div id="chat-messages" style="flex: 1; padding-bottom: 20px; overflow-y: auto;"></div>
+
+        <!-- Floating Input Area -->
+        <div class="input-area-container">
+            <div class="input-box-wrapper">
+                <!-- Upload Button Icon -->
+                <div class="upload-btn-wrapper" onclick="document.getElementById('file-upload').click()">
+                    <i class="fas fa-plus"></i>
                 </div>
-                <div class="metric">
-                    <span class="metric-label">
-                        <span id="ocr-status" class="status-indicator"></span> OCR Support
-                    </span>
-                    <span class="metric-value">
-                        <span id="ocr-value">Checking...</span>
-                    </span>
+                <textarea id="chat-input" placeholder="Ask anything" rows="1"></textarea>
+                <button id="send-btn" disabled>
+                    <i class="fas fa-arrow-up"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+    <input type="file" id="file-upload" multiple accept=".pdf" class="hidden">
+
+    <div id="modal-overlay" class="modal-overlay hidden">
+        <!-- Settings Modal (Reduced) -->
+        <div id="settings-modal" class="modal hidden">
+            <div class="modal-header">
+                <h2>Settings</h2>
+                <button class="close-modal-btn" onclick="closeModals()"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <p>Embedding Model: <span id="embed-model">default</span></p>
+                <!-- RAG Mode moved to top bar -->
+                <p>Ollama Status: <span id="ollama-status">Checking...</span></p>
+                <hr style="border-color: var(--border-color); margin: 1rem 0;">
+                <button class="new-chat-btn" id="clear-kb-btn"
+                    style="width: 100%; justify-content: center; color: var(--danger-color); border-color: var(--danger-color);">
+                    <i class="fas fa-trash"></i> Clear Knowledge Base
+                </button>
+            </div>
+        </div>
+
+        <!-- Documents List Modal -->
+        <div id="documents-modal" class="modal hidden">
+            <div class="modal-header">
+                <h2>Uploaded Documents</h2>
+                <button class="close-modal-btn" onclick="closeModals()"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <div id="modal-drop-zone" class="modal-drop-zone"
+                    onclick="document.getElementById('file-upload').click()">
+                    <i class="fas fa-cloud-upload-alt" style="font-size: 1.5rem; margin-bottom: 10px;"></i><br>
+                    <span>Click or drag PDF files here to upload</span>
                 </div>
-                <div id="ollama-warning" class="warning hidden">
-                    <i class="fas fa-exclamation-triangle"></i> Ollama is not running
-                    <button id="ollama-help-btn" class="text-btn">How to install</button>
-                </div>
-                <div id="ocr-warning" class="warning hidden">
-                    <i class="fas fa-info-circle"></i> OCR support is not available
-                    <button id="ocr-help-btn" class="text-btn">How to enable</button>
+                <div id="modal-file-list" class="file-list-container">
+                    <!-- Files will be injected here -->
                 </div>
             </div>
-        </aside>
+        </div>
 
-        <!-- Main Content -->
-        <main class="main-content">
-            <!-- Notifications Panel -->
-            <div class="notifications-panel-container">
-                <div class="notifications-panel-header" id="notifications-toggle">
-                    <div>
-                        <i class="fas fa-bell notifications-icon"></i>
-                        <span>Notifications</span>
-                    </div>
-                    <span class="notification-badge" id="notification-count">0</span>
-                </div>
-                <div class="notifications-body" id="notifications-panel">
-                    <div id="notification-list" class="notifications-list">
-                        <div class="no-notifications">No notifications yet</div>
-                    </div>
-                    <div class="notification-actions">
-                        <button id="clear-notifications" class="text-btn">
-                            <i class="fas fa-trash-alt"></i> Clear All
-                        </button>
-                    </div>
-                </div>
+        <!-- User Session Modal -->
+        <div id="user-modal" class="modal hidden">
+            <div class="modal-header">
+                <h2>User Session</h2>
+                <button class="close-modal-btn" onclick="closeModals()"><i class="fas fa-times"></i></button>
             </div>
-
-            <div class="tabs-container">
-                <div class="tab-buttons">
-                    <button class="tab-btn active" data-tab="chat">
-                        <i class="fas fa-comments"></i> Chat
-                    </button>
-                    <button class="tab-btn" data-tab="analytics">
-                        <i class="fas fa-chart-line"></i> Analytics
-                    </button>
-                    <button class="tab-btn" data-tab="settings">
-                        <i class="fas fa-cog"></i> Settings
-                    </button>
-                    <button class="tab-btn" data-tab="about">
-                        <i class="fas fa-info-circle"></i> About
-                    </button>
-                </div>
-            </div>
-
-            <!-- Chat Tab -->
-            <div id="chat-tab" class="tab-pane active">
-                <div id="no-docs-warning">
-                    <i class="fas fa-file-upload"></i>
-                    <h3>No documents in knowledge base</h3>
-                    <p>Please upload PDF documents in the sidebar to get started.</p>
-                </div>
-
-                <div id="chat-container" class="chat-interface hidden">
-                    <div class="chat-header">
-                        <h3>Chat with your documents</h3>
-                    </div>
-                    <div id="chat-messages"></div>
-                    
-                    <div class="chat-input-container">
-                        <textarea id="chat-input" placeholder="Ask a question about your documents..." rows="1"></textarea>
-                        <button id="send-btn">
-                            <i class="fas fa-paper-plane"></i>
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-                <!-- Analytics Tab -->
-                <div id="analytics-tab" class="tab-pane">
-                    <div class="analytics-container">
-                        <div class="analytics-card">
-                            <div class="analytics-header">
-                                <h4 class="analytics-title">Documents</h4>
-                                <i class="fas fa-file-alt analytics-icon"></i>
-                            </div>
-                            <div id="analytics-doc-count" class="metric-value">0</div>
-                        </div>
-                        
-                        <div class="analytics-card">
-                            <div class="analytics-header">
-                                <h4 class="analytics-title">Conversations</h4>
-                                <i class="fas fa-comments analytics-icon"></i>
-                            </div>
-                            <div id="conversation-count" class="metric-value">0</div>
-                        </div>
-                        
-                        <div class="analytics-card">
-                            <div class="analytics-header">
-                                <h4 class="analytics-title">Session ID</h4>
-                                <i class="fas fa-fingerprint analytics-icon"></i>
-                            </div>
-                            <div id="session-id" class="metric-value">-</div>
-                        </div>
-                    </div>
-
-                    <div class="analytics-card">
-                        <div class="analytics-header">
-                            <h4 class="analytics-title">Recent Feedback Analysis</h4>
-                            <i class="fas fa-chart-bar analytics-icon"></i>
-                        </div>
-                        <div id="feedback-analysis">
-                            <div class="empty-state">No feedback data available yet.</div>
-                        </div>
-                    </div>
-
-                    <div class="analytics-card">
-                        <div class="analytics-header">
-                            <h4 class="analytics-title">System Information</h4>
-                            <i class="fas fa-server analytics-icon"></i>
-                        </div>
-                        <button class="expand-btn">View System Details</button>
-                        <div class="expand-content hidden">
-                            <pre id="system-info"></pre>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Settings Tab -->
-                <div id="settings-tab" class="tab-pane">
-                    <div class="analytics-card">
-                        <div class="analytics-header">
-                            <h4 class="analytics-title">Model Configuration</h4>
-                            <i class="fas fa-robot analytics-icon"></i>
-                        </div>
-                        
-                        <div class="settings-grid">
-                            <div class="metric">
-                                <span class="metric-label">Embedding Model</span>
-                                <span class="metric-value">all-MiniLM-L6-v2</span>
-                            </div>
-                            <div class="metric">
-                                <span class="metric-label">LLM Model</span>
-                                <span class="metric-value">llama3.1:8b</span>
-                            </div>
-                            <div class="metric">
-                                <span class="metric-label">Semantic Weight</span>
-                                <span class="metric-value">0.7</span>
-                            </div>
-                            <div class="metric">
-                                <span class="metric-label">Keyword Weight</span>
-                                <span class="metric-value">0.3</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="analytics-card">
-                        <div class="analytics-header">
-                            <h4 class="analytics-title">Text Chunking</h4>
-                            <i class="fas fa-cut analytics-icon"></i>
-                        </div>
-                        
-                        <div class="settings-grid">
-                            <div class="metric">
-                                <span class="metric-label">Max Chunk Size</span>
-                                <span class="metric-value">1000</span>
-                            </div>
-                            <div class="metric">
-                                <span class="metric-label">Chunk Overlap</span>
-                                <span class="metric-value">200</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="analytics-card">
-                        <div class="analytics-header">
-                            <h4 class="analytics-title">Advanced Settings</h4>
-                            <i class="fas fa-sliders-h analytics-icon"></i>
-                        </div>
-                        
-                        <div class="metric">
-                            <span class="metric-label">Auto-load documents</span>
-                            <span class="metric-value">
-                                <i class="fas fa-check-circle" style="color: var(--success-color)"></i>
-                            </span>
-                        </div>
-                        <div class="metric">
-                            <span class="metric-label">Skip existing documents</span>
-                            <span class="metric-value">
-                                <i class="fas fa-check-circle" style="color: var(--success-color)"></i>
-                            </span>
-                        </div>
-                        
-                        <p class="info-text">To change auto-loading settings, edit the settings.py file and restart the application.</p>
-                    </div>
-
-                    <div class="analytics-card">
-                        <div class="analytics-header">
-                            <h4 class="analytics-title">Conversation Management</h4>
-                            <i class="fas fa-history analytics-icon"></i>
-                        </div>
-                        
-                        <div style="display: flex; gap: 1rem; margin-top: 0.5rem;">
-                            <button id="export-conversation-btn" class="primary-btn">
-                                <i class="fas fa-download"></i> Export History
-                            </button>
-                            <button id="clear-conversation-btn" class="primary-btn">
-                                <i class="fas fa-trash"></i> Clear History
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- About Tab -->
-                <div id="about-tab" class="tab-pane">
-                    <div class="analytics-card">
-                        <div class="analytics-header">
-                            <h4 class="analytics-title">About DocuMind</h4>
-                            <i class="fas fa-book-open analytics-icon"></i>
-                        </div>
-                        
-                        <p><strong>DocuMind</strong> is an AI-powered knowledge base assistant that transforms your static PDF documents into an interactive, searchable knowledge base. Ask questions in natural language and get contextual answers backed by your organizational documents.</p>
-                    </div>
-                    
-                    <div class="analytics-card">
-                        <div class="analytics-header">
-                            <h4 class="analytics-title">Key Features</h4>
-                            <i class="fas fa-star analytics-icon"></i>
-                        </div>
-                        
-                        <div class="feature-list">
-                            <div class="feature-item">
-                                <i class="fas fa-file-pdf"></i>
-                                <div>
-                                    <h5>Multi-format PDF Processing</h5>
-                                    <p>Robust text extraction with fallback mechanisms</p>
-                                </div>
-                            </div>
-                            
-                            <div class="feature-item">
-                                <i class="fas fa-search"></i>
-                                <div>
-                                    <h5>Semantic Search</h5>
-                                    <p>Intelligent document retrieval using state-of-the-art embeddings</p>
-                                </div>
-                            </div>
-                            
-                            <div class="feature-item">
-                                <i class="fas fa-network-wired"></i>
-                                <div>
-                                    <h5>Hybrid Retrieval</h5>
-                                    <p>Combines semantic similarity with keyword matching</p>
-                                </div>
-                            </div>
-                            
-                            <div class="feature-item">
-                                <i class="fas fa-shield-alt"></i>
-                                <div>
-                                    <h5>Local AI</h5>
-                                    <p>Uses Ollama for privacy-preserving, local AI inference</p>
-                                </div>
-                            </div>
-                            
-                            <div class="feature-item">
-                                <i class="fas fa-memory"></i>
-                                <div>
-                                    <h5>Conversation Memory</h5>
-                                    <p>Maintains context across multiple questions</p>
-                                </div>
-                            </div>
-                            
-                            <div class="feature-item">
-                                <i class="fas fa-link"></i>
-                                <div>
-                                    <h5>Source Attribution</h5>
-                                    <p>Always shows which documents informed the answer</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="analytics-card">
-                        <div class="analytics-header">
-                            <h4 class="analytics-title">Technology Stack</h4>
-                            <i class="fas fa-layer-group analytics-icon"></i>
-                        </div>
-                        
-                        <div class="tech-stack">
-                            <div class="tech-item">
-                                <i class="fas fa-file-alt"></i>
-                                <p>PyPDF2, PyMuPDF, pdfplumber</p>
-                                <span>Document Processing</span>
-                            </div>
-                            
-                            <div class="tech-item">
-                                <i class="fas fa-file-image"></i>
-                                <p>pytesseract, pdf2image</p>
-                                <span>OCR Support</span>
-                            </div>
-                            
-                            <div class="tech-item">
-                                <i class="fas fa-vector-square"></i>
-                                <p>Sentence-Transformers (all-MiniLM-L6-v2)</p>
-                                <span>Embeddings</span>
-                            </div>
-                            
-                            <div class="tech-item">
-                                <i class="fas fa-database"></i>
-                                <p>ChromaDB</p>
-                                <span>Vector Database</span>
-                            </div>
-                            
-                            <div class="tech-item">
-                                <i class="fas fa-brain"></i>
-                                <p>Ollama (Llama 3.1 8B)</p>
-                                <span>LLM</span>
-                            </div>
-                            
-                            <div class="tech-item">
-                                <i class="fas fa-code"></i>
-                                <p>HTML/CSS/JavaScript</p>
-                                <span>Frontend</span>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="analytics-card">
-                        <div class="analytics-header">
-                            <h4 class="analytics-title">Getting Started</h4>
-                            <i class="fas fa-rocket analytics-icon"></i>
-                        </div>
-                        
-                        <div class="steps">
-                            <div class="step-item">
-                                <div class="step-number">1</div>
-                                <div class="step-content">
-                                    <h5>Setup</h5>
-                                    <p>Ensure Ollama is running with the <code>llama3.1:8b</code> model</p>
-                                </div>
-                            </div>
-                            
-                            <div class="step-item">
-                                <div class="step-number">2</div>
-                                <div class="step-content">
-                                    <h5>Documents</h5>
-                                    <p>Place PDFs in the <code>data/documents</code> folder for auto-loading, or upload via the sidebar</p>
-                                </div>
-                            </div>
-                            
-                            <div class="step-item">
-                                <div class="step-number">3</div>
-                                <div class="step-content">
-                                    <h5>Process</h5>
-                                    <p>For uploaded documents, click "Process Documents" to build your knowledge base</p>
-                                </div>
-                            </div>
-                            
-                            <div class="step-item">
-                                <div class="step-number">4</div>
-                                <div class="step-content">
-                                    <h5>Query</h5>
-                                    <p>Start asking questions about your documents!</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="analytics-card">
-                        <div class="analytics-header">
-                            <h4 class="analytics-title">Ollama Setup Guide</h4>
-                            <i class="fas fa-tools analytics-icon"></i>
-                        </div>
-                        
-                        <button class="expand-btn">View Installation Steps</button>
-                        <div class="expand-content hidden">
-                            <h5>Installation Steps:</h5>
-                            <ol>
-                                <li><strong>Download:</strong> Visit <a href="https://ollama.ai" target="_blank">ollama.ai</a> and download for your OS</li>
-                                <li><strong>Install:</strong> Follow the installation instructions</li>
-                                <li><strong>Pull Model:</strong> Run <code>ollama pull llama3.1:8b</code> in your terminal</li>
-                                <li><strong>Verify:</strong> The model should start automatically</li>
-                            </ol>
-                            
-                            <h5>Troubleshooting:</h5>
-                            <ul>
-                                <li><strong>Service not running:</strong> Try <code>ollama serve</code> in terminal</li>
-                                <li><strong>Model not found:</strong> Ensure you've pulled the correct model</li>
-                                <li><strong>Memory issues:</strong> The 8B model requires ~8GB RAM</li>
-                                <li><strong>Performance:</strong> Consider using a GPU for faster responses</li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </main>
-
-        <!-- Modal Dialogs -->
-        <div id="modal-overlay" class="modal-overlay hidden">
-            <div id="ocr-help-modal" class="modal hidden">
-                <div class="modal-header">
-                    <h3 class="modal-title">How to Enable OCR Support</h3>
-                    <button class="close-modal-btn"><i class="fas fa-times"></i></button>
-                </div>
-                <div class="modal-body">
-                    <div class="feature-item">
-                        <i class="fas fa-info-circle"></i>
-                        <div>
-                            <h5>What is OCR?</h5>
-                            <p>OCR (Optical Character Recognition) allows DocuMind to extract text from scanned PDFs or PDFs that don't have selectable text.</p>
-                        </div>
-                    </div>
-                    
-                    <h4>Installation Steps</h4>
-                    
-                    <div class="step-item">
-                        <div class="step-number">1</div>
-                        <div class="step-content">
-                            <h5>Python Packages</h5>
-                            <div class="code-block">pip install pytesseract pdf2image pillow</div>
-                        </div>
-                    </div>
-                    
-                    <div class="step-item">
-                        <div class="step-number">2</div>
-                        <div class="step-content">
-                            <h5>System Dependencies</h5>
-                            
-                            <div class="tabs-container" style="background: transparent; padding: 0;">
-                                <div class="tab-buttons">
-                                    <button class="tab-btn active ocr-platform" data-platform="macos">macOS</button>
-                                    <button class="tab-btn ocr-platform" data-platform="linux">Linux</button>
-                                    <button class="tab-btn ocr-platform" data-platform="windows">Windows</button>
-                                </div>
-                            </div>
-                            
-                            <div class="platform-content" id="macos-content">
-                                <div class="code-block">brew install tesseract poppler</div>
-                            </div>
-                            
-                            <div class="platform-content hidden" id="linux-content">
-                                <div class="code-block">sudo apt-get update
-sudo apt-get install -y tesseract-ocr
-sudo apt-get install -y poppler-utils</div>
-                            </div>
-                            
-                            <div class="platform-content hidden" id="windows-content">
-                                <p>1. Download and install Tesseract from: <a href="https://github.com/UB-Mannheim/tesseract/wiki" target="_blank">https://github.com/UB-Mannheim/tesseract/wiki</a></p>
-                                <p>2. Add Tesseract to your PATH</p>
-                                <p>3. Install poppler for Windows: <a href="https://github.com/oschwartz10612/poppler-windows" target="_blank">https://github.com/oschwartz10612/poppler-windows</a></p>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="step-item">
-                        <div class="step-number">3</div>
-                        <div class="step-content">
-                            <h5>Verification</h5>
-                            <p>After installation, restart the API server. OCR support should be automatically detected.</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button class="primary-btn" onclick="closeModals()">Got it</button>
-                </div>
-            </div>
-
-            <div id="ollama-help-modal" class="modal hidden">
-                <div class="modal-header">
-                    <h3 class="modal-title">How to Install Ollama</h3>
-                    <button class="close-modal-btn"><i class="fas fa-times"></i></button>
-                </div>
-                <div class="modal-body">
-                    <div class="step-item">
-                        <div class="step-number">1</div>
-                        <div class="step-content">
-                            <h5>Download Ollama</h5>
-                            <p>Visit <a href="https://ollama.ai" target="_blank">ollama.ai</a> to download the appropriate version for your operating system</p>
-                        </div>
-                    </div>
-                    
-                    <div class="step-item">
-                        <div class="step-number">2</div>
-                        <div class="step-content">
-                            <h5>Install Ollama</h5>
-                            <p>Follow the installation instructions for your platform</p>
-                        </div>
-                    </div>
-                    
-                    <div class="step-item">
-                        <div class="step-number">3</div>
-                        <div class="step-content">
-                            <h5>Pull the required model</h5>
-                            <div class="code-block">ollama pull llama3.1:8b</div>
-                        </div>
-                    </div>
-                    
-                    <div class="step-item">
-                        <div class="step-number">4</div>
-                        <div class="step-content">
-                            <h5>Start the Ollama service</h5>
-                            <div class="code-block">ollama serve</div>
-                        </div>
-                    </div>
-                    
-                    <div class="feature-item">
-                        <i class="fas fa-exclamation-triangle"></i>
-                        <div>
-                            <h5>Troubleshooting</h5>
-                            <ul>
-                                <li>Make sure Ollama is running in the background</li>
-                                <li>Check that the correct model is installed using <code>ollama list</code></li>
-                                <li>Verify there's enough RAM available (minimum 8GB recommended)</li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button class="primary-btn" onclick="closeModals()">Got it</button>
+            <div class="modal-body">
+                <p style="margin-bottom: 0.5rem; color: var(--text-secondary);">Current Session ID:</p>
+                <div
+                    style="background: rgba(0,0,0,0.2); padding: 10px; border-radius: 6px; font-family: monospace; display: flex; align-items: center; justify-content: space-between;">
+                    <span id="session-id-display">...</span>
+                    <i class="fas fa-copy" onclick="copySessionId()" style="cursor: pointer; opacity: 0.7;"
+                        title="Copy to clipboard"></i>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Add CSS rules for additional components used in the modals -->
-    <style>
-        .platform-content {
-            padding: 1rem;
-            background-color: var(--light-color);
-            border-radius: var(--border-radius-md);
-            margin-top: 0.5rem;
-        }
-        
-        .code-block {
-            background-color: #f1f5f9;
-            padding: 0.75rem 1rem;
-            border-radius: var(--border-radius-sm);
-            font-family: monospace;
-            white-space: pre;
-            overflow-x: auto;
-            border-left: 3px solid var(--primary-color);
-            margin: 0.5rem 0;
-        }
-        
-        .feature-item {
-            display: flex;
-            gap: 1rem;
-            padding: 1rem;
-            background-color: white;
-            border-radius: var(--border-radius-md);
-            margin-bottom: 1rem;
-            box-shadow: var(--box-shadow-sm);
-        }
-        
-        .feature-item i {
-            font-size: 1.5rem;
-            color: var(--primary-color);
-            margin-top: 0.25rem;
-        }
-        
-        .feature-list {
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
-        }
-        
-        .tech-stack {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 1rem;
-            margin-top: 1rem;
-        }
-        
-        .tech-item {
-            background-color: white;
-            border-radius: var(--border-radius-md);
-            padding: 1rem;
-            text-align: center;
-            box-shadow: var(--box-shadow-sm);
-            transition: var(--hover-transition);
-        }
-        
-        .tech-item:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--box-shadow-md);
-        }
-        
-        .tech-item i {
-            font-size: 2rem;
-            color: var(--primary-color);
-            margin-bottom: 0.75rem;
-        }
-        
-        .tech-item p {
-            font-weight: 500;
-            margin-bottom: 0.5rem;
-        }
-        
-        .tech-item span {
-            font-size: 0.8rem;
-            color: var(--secondary-color);
-            display: block;
-        }
-        
-        .step-item {
-            display: flex;
-            margin-bottom: 1.5rem;
-            gap: 1rem;
-        }
-        
-        .step-number {
-            background-color: var(--primary-color);
-            color: white;
-            width: 30px;
-            height: 30px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 50%;
-            font-weight: 700;
-            flex-shrink: 0;
-        }
-        
-        .step-content {
-            flex: 1;
-        }
-        
-        .step-content h5 {
-            margin-bottom: 0.5rem;
-        }
-        
-        .steps {
-            margin-top: 1rem;
-        }
-        
-        .info-text {
-            background-color: rgba(50, 115, 220, 0.1);
-            padding: 1rem;
-            border-radius: var(--border-radius-md);
-            margin: 1rem 0;
-            border-left: 3px solid var(--info-color);
-        }
-    </style>
+    <!-- Toast Container -->
+    <div id="toast-container"
+        style="position: fixed; bottom: 20px; right: 20px; z-index: 2000; display: flex; flex-direction: column; gap: 10px;">
+    </div>
 
-    <!-- Add script to handle platform tabs in the OCR help modal -->
+    <!-- Legacy script refs adapted -->
+    <script src="js/app.js"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const ocrPlatformBtns = document.querySelectorAll('.ocr-platform');
-            ocrPlatformBtns.forEach(btn => {
-                btn.addEventListener('click', function() {
-                    // Remove active class from all buttons
-                    ocrPlatformBtns.forEach(b => b.classList.remove('active'));
-                    // Add active class to clicked button
-                    this.classList.add('active');
-                    
-                    // Hide all platform content
-                    document.querySelectorAll('.platform-content').forEach(content => {
-                        content.classList.add('hidden');
-                    });
-                    
-                    // Show the selected platform content
-                    const platformId = this.dataset.platform;
-                    document.getElementById(`${platformId}-content`).classList.remove('hidden');
-                });
+        // Simple helper for empty state cards
+        function setInput(text) {
+            const input = document.getElementById('chat-input');
+            input.value = text;
+            input.focus();
+        }
+
+        // Toggle Settings
+        const systemInfoTrigger = document.getElementById('system-info-trigger');
+        if (systemInfoTrigger) {
+            systemInfoTrigger.addEventListener('click', () => {
+                document.getElementById('modal-overlay').classList.remove('hidden');
+                document.getElementById('settings-modal').classList.remove('hidden');
+            });
+        }
+
+        document.querySelectorAll('.close-modal-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.getElementById('modal-overlay').classList.add('hidden');
+                document.querySelectorAll('.modal').forEach(m => m.classList.add('hidden'));
             });
         });
-    </script>
 
-    <script src="js/notification-panel.js"></script>
-    <script src="js/app.js"></script>
+        // Trigger file upload from sidebar
+        const fileUploadTrigger = document.getElementById('file-upload-trigger');
+        if (fileUploadTrigger) {
+            fileUploadTrigger.addEventListener('click', () => {
+                document.getElementById('file-upload').click();
+            });
+        }
+
+        // Auto-resize textarea
+        const textarea = document.getElementById('chat-input');
+        if (textarea) {
+            textarea.addEventListener('input', function () {
+                this.style.height = 'auto';
+                this.style.height = (this.scrollHeight) + 'px';
+                if (this.value === '') this.style.height = 'auto';
+            });
+        }
+    </script>
 </body>
+
 </html>

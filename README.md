@@ -1,7 +1,7 @@
-# 🧠 DocuMind - AI-Powered Knowledge Base Assistant
+# 🧠 Cortex - AI-Powered Knowledge Base Assistant
 
 <div align="center">
-  <img src="assets/logo.png" alt="DocuMind Logo" width="200">
+  <img src="assets/logo.png" alt="Cortex Logo" width="200">
   <br>
   <img src="https://img.shields.io/badge/version-1.1.0-green?style=flat-square" alt="Version">
   <img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="License">
@@ -11,7 +11,7 @@
 
 ## 🚀 Overview
 
-DocuMind is a privacy-focused, self-hosted AI assistant that helps you extract insights from your PDF documents using local LLMs through Ollama. Ask questions about your documents in natural language and receive accurate answers with source citations - all without sending your data to external services.
+Cortex is a privacy-focused, self-hosted AI assistant that helps you extract insights from your PDF documents using local LLMs through Ollama. Ask questions about your documents in natural language and receive accurate answers with source citations - all without sending your data to external services.
 
 <div align="center">
   <h3>📄 Upload Documents → 🔍 Ask Questions → 🤖 Get AI Answers</h3>
@@ -22,11 +22,13 @@ DocuMind is a privacy-focused, self-hosted AI assistant that helps you extract i
 - **🔒 Privacy First**: All processing happens locally - no external API calls
 - **📄 Multi-format PDF Processing**: Robust text extraction with OCR support
 - **🔍 Hybrid Retrieval System**: Combines semantic and keyword search for accuracy
-- **🤖 Local LLM Integration**: Uses Ollama (Llama 3.2 3B) for responses
+- **🤖 Agentic RAG System**: Intelligent tool selection and multi-step reasoning
+- **🔗 n8n Workflow Integration**: Low-code automation with web search and Telegram bot
+- **🌐 External Knowledge**: Augments internal docs with web search when needed
 - **💬 Conversation Memory**: Maintains context across multiple questions
-- **📊 Source Attribution**: Shows which documents informed each answer
+- **📊 Enhanced Citations**: Page numbers, excerpts, and confidence scores
 - **🔄 Automatic Document Loading**: Auto-loads PDFs from the documents directory
-- **🌐 Dual Interfaces**: Both Streamlit UI and HTML/CSS/JS web interface
+- **🌐 Multiple Interfaces**: Web UI, Streamlit, and Telegram bot
 - **⚡ Docker Ready**: Simple setup with Docker and GPU acceleration support
 
 ## 🚀 Quick Start with Docker (Recommended)
@@ -41,9 +43,25 @@ chmod +x run_docker.sh
 ./run_docker.sh
 ```
 
-Select option 1 from the menu to start DocuMind, then:
+Select option 1 from the menu to start Cortex, then:
 - **Web UI**: http://localhost:8080
 - **API Endpoint**: http://localhost:8000/api
+
+### 🔗 With n8n Automation (Optional)
+
+To enable advanced workflows like web search and Telegram bot:
+
+```bash
+./run_docker.sh
+# Select option 2: "Start Cortex with n8n (automation workflows)"
+```
+
+This will start Cortex with n8n:
+- **Web UI**: http://localhost:8080
+- **n8n Workflows**: http://localhost:5678
+- **Telegram Bot**: Configure via @BotFather on Telegram
+
+See [n8n Integration Guide](documentation/N8N_INTEGRATION.md) for setup instructions.
 
 ## 💻 Manual Setup (Alternative)
 
@@ -83,12 +101,13 @@ If you prefer to run without Docker:
 ## 🔧 System Architecture
 
 ```
-DocuMind/
+Cortex/
 ├── app.py                     # Main Streamlit application
 ├── api.py                     # Alternative web interface (HTML/CSS/JavaScript)
 ├── docker-entrypoint.sh       # Docker container startup script
 ├── docker-compose.yml         # Container orchestration configuration
 ├── docker-compose.gpu.yml     # GPU support configuration
+├── docker-compose.n8n.yml     # n8n automation service (optional)
 ├── Dockerfile                 # Container definition
 ├── run_docker.sh              # Docker helper script
 ├── src/
@@ -98,7 +117,19 @@ DocuMind/
 │   ├── llm_handler.py         # LLM integration and prompts
 │   ├── evaluator.py           # Evaluation framework
 │   ├── preload_models.py      # Model preloading script
-│   └── utils.py               # Utility functions
+│   ├── utils.py               # Utility functions
+│   ├── agent/                 # Agentic RAG components
+│   │   ├── orchestrator.py    # Main agentic orchestrator
+│   │   ├── query_analyzer.py  # Query analysis
+│   │   └── execution_engine.py # Tool execution engine
+│   ├── tools/                 # RAG tools
+│   │   ├── semantic_search_tool.py
+│   │   ├── keyword_search_tool.py
+│   │   ├── comparison_tool.py
+│   │   ├── summarization_tool.py
+│   │   ├── calculator_tool.py
+│   │   └── web_search_tool.py # n8n-powered web search
+│   └── citation_enhancer.py   # Enhanced citations with page numbers
 ├── data/
 │   ├── documents/             # PDF documents for auto-loading
 │   ├── vectorstore/           # Chroma vector database
@@ -107,6 +138,12 @@ DocuMind/
 ├── config/
 │   └── settings.py            # Configuration settings
 ├── documentation/             # Detailed documentation files
+│   ├── N8N_INTEGRATION.md     # n8n setup and usage guide
+│   └── ...
+├── n8n-workflows/             # Pre-built n8n workflows
+│   ├── 01-web-search-tool.json
+│   ├── 02-telegram-bot.json
+│   └── README.md
 ├── tests/                     # Testing and diagnostic tools
 └── web/                       # Web UI assets (HTML/CSS/JS)
 ```
@@ -115,7 +152,7 @@ DocuMind/
 
 ### Embedding Model Caching
 
-DocuMind pre-downloads and caches embedding models to improve startup and query time:
+Cortex pre-downloads and caches embedding models to improve startup and query time:
 
 - Models are stored in `./data/models_cache/`
 - ONNX optimized versions are kept in `./data/chroma_cache/onnx_models/`
@@ -127,6 +164,22 @@ Choose the right LLM based on your hardware:
 - **Low-resource systems**: Switch to `phi3:mini` for faster responses (option 5 in the run_docker.sh menu)
 
 ## 🔍 Advanced Features
+
+### Agentic RAG System
+- **Intelligent Tool Selection**: Automatically chooses the best tools for each query
+- **Multi-Step Reasoning**: Chains multiple tools for complex queries
+- **Enhanced Citations**: Page numbers, excerpts, and confidence scores
+- **Reasoning Traces**: See which tools were used and why
+
+Switch between modes in the Web UI:
+- **Traditional RAG**: Linear pipeline (retrieve → generate)
+- **Agentic RAG**: Dynamic tool selection with reasoning
+
+### n8n Workflow Automation
+- **Web Search Integration**: Augments internal docs with external knowledge
+- **Telegram Bot**: Chat with Cortex via Telegram
+- **Low-Code Extensibility**: Create custom workflows without coding
+- See [n8n Integration Guide](documentation/N8N_INTEGRATION.md) for setup
 
 ### Auto-Loading Documents
 - Documents placed in the `data/documents` directory are automatically loaded when the app starts
@@ -184,8 +237,10 @@ For more troubleshooting tips, see the [Full Documentation](documentation/DOCUME
 
 Comprehensive documentation is available in the `documentation` folder:
 
+- [Complete System Documentation](documentation/SYSTEM_DOCUMENTATION.md)
 - [Complete User Guide](documentation/USER_GUIDE.md)
 - [Docker Setup Guide](documentation/DOCKER.md)
+- [n8n Integration Guide](documentation/N8N_INTEGRATION.md)
 - [Environment Setup Guide](documentation/ENVIRONMENT_SETUP.md)
 - [OCR Setup Instructions](documentation/OCR_SETUP.md)
 - [Full Technical Documentation](documentation/DOCUMENTATION.md)
@@ -196,9 +251,12 @@ Comprehensive documentation is available in the `documentation` folder:
 - **Embeddings**: Sentence-Transformers (all-MiniLM-L6-v2)
 - **Vector Database**: ChromaDB
 - **LLM**: Ollama (Llama 3.2 3B)
+- **Agentic System**: Custom tool orchestration with reasoning
+- **Automation**: n8n (workflow automation platform)
 - **Frontend**: Streamlit, HTML/CSS/JavaScript
 - **Backend**: Python FastAPI
 - **Containers**: Docker, Docker Compose
+- **External APIs**: DuckDuckGo (web search), Telegram Bot API
 
 ## 📄 License
 

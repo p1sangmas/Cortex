@@ -1,6 +1,6 @@
-# Setting Up OCR Support for DocuMind
+# Setting Up OCR Support for Cortex
 
-DocuMind now includes OCR (Optical Character Recognition) support for handling PDFs that don't parse correctly with conventional methods. This is particularly useful for PDFs saved from websites or scanned documents.
+Cortex now includes OCR (Optical Character Recognition) support for handling PDFs that don't parse correctly with conventional methods. This is particularly useful for PDFs saved from websites or scanned documents.
 
 ## Dependencies
 
@@ -43,7 +43,7 @@ sudo apt-get install -y poppler-utils
 2. Add Tesseract to your PATH
 3. Install poppler for Windows (needed for pdf2image): https://github.com/oschwartz10612/poppler-windows
 
-## Enabling OCR in DocuMind
+## Enabling OCR in Cortex
 
 Once dependencies are installed, OCR will automatically be enabled when the application starts. The system will detect when a PDF needs OCR processing and apply it automatically as a fallback.
 

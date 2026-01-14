@@ -1,8 +1,11 @@
 # Directories to ignore
-data/documents/
+data/documents/*
+!data/documents/README.md
+!data/documents/.gitkeep
 data/vectorstore/
 data/models_cache/
 data/chroma_cache/
+n8n-data/
 ollama/
 tests/
 __pycache__/
@@ -13,10 +16,18 @@ __pycache__/
 *.db
 *.sqlite3
 *.log
+feedback.db
+
+# Backup files
+*.bak
+
+# Cleanup and test scripts
 ai_kb_assistant_guide.md
 presentation_draft.md
 prepare_for_github.py
 hard_reset.py
+reset_chroma.py
+test_*.py
 
 # OS-specific files
 .DS_Store

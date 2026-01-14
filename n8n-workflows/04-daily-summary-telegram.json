@@ -1,0 +1,139 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 20 * * *"
+            }
+          ]
+        }
+      },
+      "id": "ab6a19dc-41a2-41c5-aa86-d1e21b38c0de",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -64,
+        -48
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://cortex:8080/api/analytics",
+        "options": {}
+      },
+      "id": "053ecb3b-2489-47d8-9d7a-30040b0989d6",
+      "name": "Get Analytics",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        160,
+        -48
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Format enhanced daily summary message\nconst data = $input.item.json;\n\n// Format timestamp\nconst timestamp = new Date(data.timestamp).toLocaleString('en-US', {\n  weekday: 'long',\n  month: 'short',\n  day: 'numeric',\n  hour: '2-digit',\n  minute: '2-digit'\n});\n\n// Extract data\nconst docs = data.documents;\nconst db = data.database;\nconst system = data.system;\nconst statusEmoji = data.status_emoji || '🔵';\nconst statusText = data.system_status.charAt(0).toUpperCase() + data.system_status.slice(1);\n\n// Build status line with insights\nlet statusLine = `${statusEmoji} **${statusText}**`;\nif (data.system_status === 'healthy') {\n  statusLine += ' • System ready for queries';\n} else if (data.system_status === 'idle') {\n  statusLine += ' • Awaiting documents';\n} else {\n  statusLine += ' • Needs attention';\n}\n\n// Build document metrics\nconst avgChunks = docs.avg_chunks_per_file > 0 ? `~${docs.avg_chunks_per_file} chunks/file` : '';\nconst storageMB = docs.total_storage_mb > 0 ? `${docs.total_storage_mb} MB` : '0 MB';\n\n// Handle edge case: chunks exist but no files tracked\nlet documentSection = '';\nif (docs.total_chunks > 0 && docs.total_files === 0) {\n  documentSection = `📚 **Knowledge Base**\n• ${docs.total_chunks} document chunks indexed\n• Storage: ${db.size_mb} MB (database)\n• Status: Active and queryable\n\n_Note: Documents are indexed but not tracked in files list_`;\n} else if (docs.total_files > 0) {\n  documentSection = `📚 **Knowledge Base**\n• ${docs.total_files} document${docs.total_files !== 1 ? 's' : ''} • ${docs.total_chunks} chunks ${avgChunks ? `(${avgChunks})` : ''}\n• Storage: ${storageMB} • Database: ${db.size_mb} MB`;\n} else {\n  documentSection = `📚 **Knowledge Base**\n• No documents indexed yet\n• Ready to process PDFs via upload or URL ingestion`;\n}\n\n// Build file list (top 5)\nlet fileList = '';\nif (docs.files && docs.files.length > 0) {\n  const files = docs.files.slice(0, 5);\n  fileList = '\\n\\n**Recent Documents:**\\n' + files.map((f, i) => {\n    const sizeKB = (f.size / 1024).toFixed(1);\n    return `${i+1}. \\`${f.filename}\\` (${f.chunks} chunks, ${sizeKB} KB)`;\n  }).join('\\n');\n  \n  if (docs.files.length > 5) {\n    fileList += `\\n   _...and ${docs.files.length - 5} more_`;\n  }\n}\n\n// Build capabilities section\nconst capabilities = `⚡ **Capabilities**\n• ${system.mode === 'agentic' ? '🤖 Agentic RAG' : '📖 Traditional RAG'} mode\n• Hybrid search (semantic + keyword)\n• External knowledge via web search\n• Comparison & calculation tools`;\n\n// Build action items\nlet actionItems = '';\nif (docs.total_chunks === 0) {\n  actionItems = '\\n\\n**Next Steps:**\\n→ Upload documents via Web UI\\n→ Use URL ingestion workflow\\n→ Start querying your knowledge base';\n} else {\n  actionItems = '\\n\\n**Quick Actions:**\\n→ `/start` - Query documents\\n→ 🌐 [Web UI](http://localhost:8000)\\n→ 📤 Upload more documents';\n}\n\n// Build final message\nconst message = `📊 **Cortex Daily Summary**\n${timestamp}\n\n${statusLine}\n\n${documentSection}${fileList}\n\n${capabilities}${actionItems}`;\n\nreturn {\n  message: message,\n  parse_mode: 'Markdown'\n};"
+      },
+      "id": "4291492e-cc33-452b-b5fc-1aefecbf996e",
+      "name": "Format Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        384,
+        -48
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chat_id }}",
+        "text": "={{ $json.message }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "8dba48ba-7082-4969-9607-113ff809e9c5",
+      "name": "Send to Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.1,
+      "position": [
+        800,
+        -48
+      ],
+      "webhookId": "1a292bd9-4a68-41a0-824f-ecdd83f83be2",
+      "credentials": {
+        "telegramApi": {
+          "id": "RvM3WzTRKaMYDEXX",
+          "name": "Cortex Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get your Telegram chat ID\n// You need to replace this with your actual chat ID\n// To find your chat ID:\n// 1. Message your bot\n// 2. Visit: https://api.telegram.org/bot<YOUR_BOT_TOKEN>/getUpdates\n// 3. Look for \"chat\":{\"id\":123456789}\n\nconst chatId = \"689189325\"; // Replace with your chat ID\n\nreturn {\n  ...$input.item.json,\n  chat_id: chatId\n};"
+      },
+      "id": "9da2fff7-69ce-4a0e-98df-711324a0419c",
+      "name": "Set Chat ID",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        592,
+        -48
+      ]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Analytics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Analytics": {
+      "main": [
+        [
+          {
+            "node": "Format Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Message": {
+      "main": [
+        [
+          {
+            "node": "Set Chat ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Chat ID": {
+      "main": [
+        [
+          {
+            "node": "Send to Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "9e59b40a7389101be7ffb2c3b0d63331d2bd85aa21ef87fed65d3cd2c7d93812"
+  }
+}

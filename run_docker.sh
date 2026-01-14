@@ -1,5 +1,5 @@
 #!/bin/bash
-# This script helps run DocuMind using Docker Compose
+# This script helps run Cortex using Docker Compose
 
 # Check if Docker is installed
 if ! command -v docker &> /dev/null; then
@@ -59,7 +59,7 @@ if [ ! -f .env ]; then
         fi
         sed -i.bak "s/TZ=UTC/TZ=${TZ}/" .env && rm -f .env.bak
     else
-        echo "# DocuMind Docker Environment Settings" > .env
+        echo "# Cortex Docker Environment Settings" > .env
         echo "TZ=$(date +%Z)" >> .env
         echo "DEBUG=false" >> .env
         echo "WEB_UI_PORT=8080" >> .env
@@ -106,28 +106,29 @@ ensure_model_cache() {
     fi
     
     # Check if container is running and has models downloaded
-    if docker ps -q -f name=documind >/dev/null; then
+    if docker ps -q -f name=cortex >/dev/null; then
         echo "Checking for embedding models in container..."
-        if docker exec -i documind bash -c "[ -d /home/docuuser/.cache/chroma/onnx_models ]" >/dev/null 2>&1; then
+        if docker exec -i cortex bash -c "[ -d /home/docuuser/.cache/chroma/onnx_models ]" >/dev/null 2>&1; then
             echo "Ensuring embedding models are preserved..."
-            docker exec -i documind bash -c "cp -r /home/docuuser/.cache/chroma/onnx_models /tmp/ 2>/dev/null" >/dev/null 2>&1
-            docker cp documind:/tmp/onnx_models ./data/chroma_cache/ >/dev/null 2>&1
+            docker exec -i cortex bash -c "cp -r /home/docuuser/.cache/chroma/onnx_models /tmp/ 2>/dev/null" >/dev/null 2>&1
+            docker cp cortex:/tmp/onnx_models ./data/chroma_cache/ >/dev/null 2>&1
             echo "Embedding models backed up to data/chroma_cache/"
         fi
     fi
 }
 
 # Main menu
-echo "==== DocuMind Docker Management ===="
-echo "1. Start DocuMind"
-echo "2. Stop DocuMind"
-echo "3. View logs"
-echo "4. Pull Ollama models"
-echo "5. Switch to a faster model (may reduce quality)"
-echo "6. Reset and rebuild (Warning: This will rebuild all containers)"
-echo "7. Exit"
+echo "==== Cortex Docker Management ===="
+echo "1. Start Cortex"
+echo "2. Start Cortex with n8n (automation workflows)"
+echo "3. Stop Cortex"
+echo "4. View logs"
+echo "5. Pull Ollama models"
+echo "6. Switch to a faster model (may reduce quality)"
+echo "7. Reset and rebuild (Warning: This will rebuild all containers)"
+echo "8. Exit"
 
-read -p "Please select an option (1-6): " option
+read -p "Please select an option (1-8): " option
 
 # Function to switch LLM model
 switch_model() {
@@ -172,59 +173,91 @@ switch_model() {
 
 case $option in
     1)
-        echo "Starting DocuMind..."
+        echo "Starting Cortex..."
         # Ensure model cache directories exist
         ensure_model_cache
-        
+
         # Check if GPU is available
         if check_gpu; then
             echo "NVIDIA GPU detected! Starting with GPU support..."
             docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
-            echo "DocuMind is now available with GPU acceleration at:"
+            echo "Cortex is now available with GPU acceleration at:"
         else
             echo "No NVIDIA GPU detected. Starting in CPU mode..."
             docker compose up -d
-            echo "DocuMind is now available at:"
+            echo "Cortex is now available at:"
         fi
         echo "- Web UI: http://localhost:8080"
         echo "- API: http://localhost:8000/api"
         ;;
     2)
-        echo "Stopping DocuMind..."
-        docker compose down
+        echo "Starting Cortex with n8n automation workflows..."
+        # Ensure model cache directories exist
+        ensure_model_cache
+
+        # Create n8n data directory if it doesn't exist
+        mkdir -p n8n-data
+
+        # Check if GPU is available
+        if check_gpu; then
+            echo "NVIDIA GPU detected! Starting with GPU support..."
+            docker compose -f docker-compose.yml -f docker-compose.gpu.yml -f docker-compose.n8n.yml up -d
+            echo "Cortex is now available with GPU acceleration at:"
+        else
+            echo "No NVIDIA GPU detected. Starting in CPU mode..."
+            docker compose -f docker-compose.yml -f docker-compose.n8n.yml up -d
+            echo "Cortex is now available at:"
+        fi
+        echo "- Web UI: http://localhost:8080"
+        echo "- API: http://localhost:8000/api"
+        echo "- n8n Workflows: http://localhost:5678"
+        echo ""
+        echo "n8n login credentials (configured in .env):"
+        echo "- Username: ${N8N_USER:-admin}"
+        echo "- Password: ${N8N_PASSWORD:-changeme123}"
+        echo ""
+        echo "To import workflows:"
+        echo "1. Open http://localhost:5678 in your browser"
+        echo "2. Login with the credentials above"
+        echo "3. Go to Workflows > Import from File"
+        echo "4. Select workflow JSON files from n8n-workflows/ directory"
         ;;
     3)
+        echo "Stopping Cortex..."
+        docker compose -f docker-compose.yml -f docker-compose.n8n.yml down
+        ;;
+    4)
         echo "Viewing logs (press Ctrl+C to exit)..."
         docker compose logs -f
         ;;
-    4)
+    5)
         pull_models
         ;;
-    5)
+    6)
         switch_model
         ;;
-    6)
-        echo "Rebuilding DocuMind..."
+    7)
+        echo "Rebuilding Cortex..."
         # Backup embedding models first
         ensure_model_cache
-        
-        docker compose down
+
+        docker compose -f docker-compose.yml -f docker-compose.n8n.yml down
         docker compose build --no-cache
-        
+
         # Check if GPU is available
         if check_gpu; then
             echo "NVIDIA GPU detected! Starting with GPU support..."
             docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
-            echo "DocuMind has been rebuilt with GPU acceleration and is now available at:"
+            echo "Cortex has been rebuilt with GPU acceleration and is now available at:"
         else
             echo "No NVIDIA GPU detected. Starting in CPU mode..."
             docker compose up -d
-            echo "DocuMind has been rebuilt and is now available at:"
+            echo "Cortex has been rebuilt and is now available at:"
         fi
         echo "- Web UI: http://localhost:8080"
         echo "- API: http://localhost:8000/api"
         ;;
-    7)
+    8)
         echo "Exiting..."
         exit 0
         ;;

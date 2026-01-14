@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Script to pre-download and initialize all required models for DocuMind.
+Script to pre-download and initialize all required models for Cortex.
 This ensures that the first query doesn't have delays from model downloads.
 """
 
@@ -38,7 +38,7 @@ except ImportError:
     VECTORSTORE_COLLECTION_NAME = "documents"
 
 def preload_models():
-    """Download and initialize all models needed by DocuMind"""
+    """Download and initialize all models needed by Cortex"""
     
     # Step 1: Download the sentence transformer embedding model
     logger.info(f"Downloading embedding model: {EMBEDDING_MODEL}")

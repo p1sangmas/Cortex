@@ -1,1303 +1,698 @@
-// DocuMind Web Interface JavaScript
+// Cortex - ChatGPT Style Logic (Interactions Fixed)
 
 // Global Variables
 const API_BASE_URL = 'http://localhost:8080/api';
-let sessionId = null;
-let conversationHistory = [];
-let processedFiles = [];
-let selectedFiles = []; // Array to track selected files
+let sessionId = Date.now().toString();
+let currentRagMode = 'agentic'; // Default to Agentic
 
 // DOM Elements
 const chatInput = document.getElementById('chat-input');
 const sendBtn = document.getElementById('send-btn');
 const chatMessages = document.getElementById('chat-messages');
-const chatContainer = document.getElementById('chat-container');
-const noDocsWarning = document.getElementById('no-docs-warning');
+const emptyState = document.getElementById('empty-state');
 const fileUpload = document.getElementById('file-upload');
-const processDocsBtn = document.getElementById('process-docs-btn');
-const processedFilesList = document.getElementById('processed-files-list');
-const docCount = document.getElementById('doc-count');
-const analyticsDocCount = document.getElementById('analytics-doc-count');
-const embedModel = document.getElementById('embed-model');
-const clearKbBtn = document.getElementById('clear-kb-btn');
-const confirmClear = document.getElementById('confirm-clear');
-const confirmClearCheckbox = document.getElementById('confirm-clear-checkbox');
-const confirmClearBtn = document.getElementById('confirm-clear-btn');
-const ollamaStatus = document.getElementById('ollama-status');
-const ocrStatus = document.getElementById('ocr-status');
-const ollamaValue = document.getElementById('ollama-value');
-const ocrValue = document.getElementById('ocr-value');
-const ollamaWarning = document.getElementById('ollama-warning');
-const ocrWarning = document.getElementById('ocr-warning');
-const ollamaHelpBtn = document.getElementById('ollama-help-btn');
-const ocrHelpBtn = document.getElementById('ocr-help-btn');
+const docCountEl = document.getElementById('doc-count');
+
+// Toggle Elements
+const modelSelectorBtn = document.getElementById('model-selector-btn');
+const modelDropdown = document.getElementById('model-dropdown');
+const currentModelText = document.getElementById('current-model-text');
+const viewDocsBtn = document.getElementById('view-docs-btn');
+const documentsModal = document.getElementById('documents-modal');
+const modalFileList = document.getElementById('modal-file-list');
 const modalOverlay = document.getElementById('modal-overlay');
-const ocaHelpModal = document.getElementById('ocr-help-modal');
-const ollamaHelpModal = document.getElementById('ollama-help-modal');
-const closeModalBtns = document.querySelectorAll('.close-modal-btn');
-const sessionIdEl = document.getElementById('session-id');
-const conversationCountEl = document.getElementById('conversation-count');
-const feedbackAnalysis = document.getElementById('feedback-analysis');
-const tabBtns = document.querySelectorAll('.tab-btn');
-const tabPanes = document.querySelectorAll('.tab-pane');
-const exportConversationBtn = document.getElementById('export-conversation-btn');
-const clearConversationBtn = document.getElementById('clear-conversation-btn');
-const systemInfo = document.getElementById('system-info');
-const expandBtns = document.querySelectorAll('.expand-btn');
 
-// Initialize the application
-function init() {
-    // Generate a session ID
+// Initialization
+document.addEventListener('DOMContentLoaded', () => {
     sessionId = generateSessionId();
-    sessionIdEl.textContent = sessionId;
-    
-    // Initialize the notification panel
-    initNotificationPanel();
-    
-    // Check system status
+    console.log('Session ID:', sessionId);
+
     checkSystemStatus();
-    
-    // Update processed files list
     updateProcessedFilesList();
-    
-    // Set up event listeners
     setupEventListeners();
-    
-    // Add animations for initial page load
-    initPageAnimations();
-}
+    setupDragAndDrop();
 
-// Add initial page load animations
-function initPageAnimations() {
-    // Ensure chat container is positioned higher on page load
-    setTimeout(() => {
-        const chatContainer = document.getElementById('chat-container');
-        if (chatContainer && !chatContainer.classList.contains('hidden')) {
-            chatContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            
-            // Position chat input for better visibility
-            const chatInputContainer = document.querySelector('.chat-input-container');
-            if (chatInputContainer) {
-                chatInputContainer.style.opacity = 0;
-                chatInputContainer.style.transform = 'translateY(20px)';
-                
-                setTimeout(() => {
-                    chatInputContainer.style.transition = 'opacity 0.5s ease-out, transform 0.5s ease-out';
-                    chatInputContainer.style.opacity = 1;
-                    chatInputContainer.style.transform = 'translateY(0)';
-                }, 300);
-            }
-        }
-    }, 500);
-    // Animate sidebar sections
-    const sidebarSections = document.querySelectorAll('.sidebar-section');
-    sidebarSections.forEach((section, index) => {
-        section.style.opacity = '0';
-        section.style.transform = 'translateY(20px)';
-        
-        setTimeout(() => {
-            section.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
-            section.style.opacity = '1';
-            section.style.transform = 'translateY(0)';
-        }, 100 + (index * 100)); // Staggered animation
-    });
-    
-    // Animate header elements
-    const header = document.querySelector('.sidebar-header');
-    if (header) {
-        header.style.opacity = '0';
-        
-        setTimeout(() => {
-            header.style.transition = 'opacity 0.5s ease';
-            header.style.opacity = '1';
-        }, 100);
-    }
-    
-    // Prepare tab panes for animation
-    const activePane = document.querySelector('.tab-pane.active');
-    if (activePane) {
-        activePane.style.opacity = '0';
-        activePane.style.transform = 'translateY(20px)';
-        
-        setTimeout(() => {
-            activePane.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
-            activePane.style.opacity = '1';
-            activePane.style.transform = 'translateY(0)';
-        }, 300);
-    }
-}
+    // Set initial model state
+    updateModelUI(currentRagMode);
+});
 
-// Generate a unique session ID
-function generateSessionId() {
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-        const r = Math.random() * 16 | 0;
-        const v = c === 'x' ? r : (r & 0x3 | 0x8);
-        return v.toString(16);
-    });
-}
-
-// Check system status
-async function checkSystemStatus() {
-    try {
-        // Set loading indicators
-        ollamaStatus.className = 'status-indicator';
-        ollamaStatus.classList.add('loading');
-        ocrStatus.className = 'status-indicator';
-        ocrStatus.classList.add('loading');
-        docCount.textContent = "...";
-        
-        const response = await fetch(`${API_BASE_URL}/status`);
-        const data = await response.json();
-        
-        // Update system status indicators
-        updateStatusIndicator(ollamaStatus, data.ollama_available);
-        updateStatusIndicator(ocrStatus, data.ocr_available);
-        
-        // Update status text values
-        ollamaValue.textContent = data.ollama_available ? 'Available' : 'Not Available';
-        ocrValue.textContent = data.ocr_available ? 'Available' : 'Not Available';
-        
-        // Show/hide warnings
-        ollamaWarning.classList.toggle('hidden', data.ollama_available);
-        ocrWarning.classList.toggle('hidden', data.ocr_available);
-        
-        // Update collection info
-        updateCollectionInfo(data.collection);
-        
-        // Update chat container visibility based on document count
-        updateChatVisibility(data.collection?.document_count || 0);
-        
-    } catch (error) {
-        console.error('Error checking system status:', error);
-        showToast('Error connecting to API server. Please make sure the server is running.', 'error');
-    }
-}
-
-// Update status indicator
-function updateStatusIndicator(element, isAvailable) {
-    element.className = 'status-indicator';
-    element.classList.add(isAvailable ? 'online' : 'offline');
-}
-
-// Update collection info
-function updateCollectionInfo(collection) {
-    if (collection) {
-        docCount.textContent = collection.document_count || 0;
-        analyticsDocCount.textContent = collection.document_count || 0;
-        
-        if (collection.embedding_model) {
-            embedModel.textContent = collection.embedding_model;
-        }
-    }
-}
-
-// Update chat visibility based on document count
-function updateChatVisibility(documentCount) {
-    if (documentCount > 0) {
-        chatContainer.classList.remove('hidden');
-        noDocsWarning.classList.add('hidden');
-    } else {
-        chatContainer.classList.add('hidden');
-        noDocsWarning.classList.remove('hidden');
-    }
-}
-
-// Set up event listeners
 function setupEventListeners() {
-    // Chat input
-    chatInput.addEventListener('keypress', function(e) {
+    // Chat Input
+    chatInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
             sendMessage();
         }
     });
-    
-    // Auto-resize text area
-    chatInput.addEventListener('input', function() {
-        this.style.height = 'auto';
-        const newHeight = Math.min(this.scrollHeight, 120); // Max height of 120px
-        this.style.height = `${newHeight}px`;
-    });
-    
-    // Send button
-    sendBtn.addEventListener('click', sendMessage);
-    
-    // File upload
-    fileUpload.addEventListener('change', handleFileUpload);
-    
-    // Process documents button
-    processDocsBtn.addEventListener('click', processDocuments);
-    
-    // Clear knowledge base
-    clearKbBtn.addEventListener('click', () => {
-        confirmClear.classList.toggle('hidden');
-    });
-    
-    // Clear knowledge base confirmation checkbox
-    confirmClearCheckbox.addEventListener('change', () => {
-        confirmClearBtn.disabled = !confirmClearCheckbox.checked;
-    });
-    
-    // Confirm clear knowledge base
-    confirmClearBtn.addEventListener('click', clearKnowledgeBase);
-    
-    // Help buttons
-    ollamaHelpBtn.addEventListener('click', () => {
-        showModal(ollamaHelpModal);
-    });
-    
-    ocrHelpBtn.addEventListener('click', () => {
-        showModal(ocaHelpModal);
-    });
-    
-    // Close modal buttons
-    closeModalBtns.forEach(button => {
-        button.addEventListener('click', closeModals);
-    });
-    
-    // Click outside modal to close
-    modalOverlay.addEventListener('click', function(e) {
-        if (e.target === modalOverlay) {
-            closeModals();
+
+    // Enable send button when typing
+    chatInput.addEventListener('input', () => {
+        if (chatInput.value.trim().length > 0) {
+            sendBtn.removeAttribute('disabled');
+        } else {
+            sendBtn.setAttribute('disabled', 'true');
         }
     });
-    
-    // Tab buttons
-    tabBtns.forEach(button => {
-        button.addEventListener('click', () => {
-            switchTab(button.dataset.tab);
+
+    chatInput.addEventListener('input', () => {
+        if (chatInput.value.trim().length > 0) {
+            sendBtn.removeAttribute('disabled');
+        } else {
+            sendBtn.setAttribute('disabled', 'true');
+        }
+    });
+
+    sendBtn.addEventListener('click', sendMessage);
+
+    // File Upload
+    fileUpload.addEventListener('change', handleFileUpload);
+
+    // Clear KB
+    const clearKbBtn = document.getElementById('clear-kb-btn');
+    if (clearKbBtn) {
+        clearKbBtn.addEventListener('click', clearKnowledgeBase);
+    }
+
+    // Model Selector Logic
+    if (modelSelectorBtn) {
+        modelSelectorBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            modelDropdown.classList.toggle('hidden');
+        });
+    }
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+        if (modelDropdown && !modelDropdown.classList.contains('hidden') && !modelSelectorBtn.contains(e.target)) {
+            modelDropdown.classList.add('hidden');
+        }
+    });
+
+    // Model Options
+    const modelOptions = document.querySelectorAll('.model-option');
+    modelOptions.forEach(option => {
+        option.addEventListener('click', () => {
+            const value = option.dataset.value;
+            currentRagMode = value;
+            updateModelUI(value);
+            modelDropdown.classList.add('hidden');
         });
     });
-    
-    // Export conversation
-    exportConversationBtn.addEventListener('click', exportConversation);
-    
-    // Clear conversation
-    clearConversationBtn.addEventListener('click', clearConversation);
-    
-    // Expandable sections with smooth animations
-    expandBtns.forEach(button => {
-        button.addEventListener('click', function() {
-            const content = this.nextElementSibling;
-            const isExpanding = content.classList.contains('hidden');
-            
-            this.classList.toggle('expanded');
-            
-            if (isExpanding) {
-                // Expanding: First remove hidden, but set height to 0
-                content.classList.remove('hidden');
-                content.style.height = '0';
-                content.style.opacity = '0';
-                content.style.overflow = 'hidden';
-                
-                // Force browser to recognize the element height
-                const expandedHeight = content.scrollHeight;
-                
-                // Animate the expansion
-                setTimeout(() => {
-                    content.style.transition = 'height 0.3s ease-out, opacity 0.3s ease-out';
-                    content.style.height = expandedHeight + 'px';
-                    content.style.opacity = '1';
-                    
-                    // Remove the height constraint after animation
-                    setTimeout(() => {
-                        content.style.height = 'auto';
-                    }, 300);
-                }, 10);
-            } else {
-                // Collapsing: First set a fixed height
-                content.style.height = content.scrollHeight + 'px';
-                content.style.overflow = 'hidden';
-                
-                // Force reflow
-                content.offsetHeight;
-                
-                // Then animate to 0
-                content.style.transition = 'height 0.3s ease-out, opacity 0.3s ease-out';
-                content.style.height = '0';
-                content.style.opacity = '0';
-                
-                // After animation, add the hidden class
-                setTimeout(() => {
-                    content.classList.add('hidden');
-                    content.style.height = '';
-                    content.style.opacity = '';
-                }, 300);
-            }
+
+    // View Documents Button
+    if (viewDocsBtn) {
+        viewDocsBtn.addEventListener('click', () => {
+            updateModalFileList();
+            openModal('documents-modal');
         });
+    }
+
+    // User Session Modal
+    const userBtn = document.getElementById('user-btn-trigger');
+    if (userBtn) {
+        userBtn.addEventListener('click', () => {
+            document.getElementById('session-id-display').textContent = sessionId;
+            openModal('user-modal');
+        });
+    }
+}
+
+// Helper to copy Session ID
+function copySessionId() {
+    const text = document.getElementById('session-id-display').textContent;
+    navigator.clipboard.writeText(text).then(() => {
+        showToast('Session ID copied!', 'success');
     });
 }
 
-// Send a message
-function sendMessage() {
-    const query = chatInput.value.trim();
-    if (!query) return;
-    
-    // Add message to UI
-    addMessage(query, 'user');
-    
-    // Clear input
+function updateModelUI(mode) {
+    // Update Text
+    currentModelText.textContent = mode === 'traditional' ? 'Traditional' : 'Agentic';
+
+    // Update Selected Class in Dropdown
+    document.querySelectorAll('.model-option').forEach(opt => {
+        const checkIcon = opt.querySelector('.check-icon');
+        if (opt.dataset.value === mode) {
+            opt.classList.add('selected');
+            if (checkIcon) checkIcon.classList.remove('hidden');
+        } else {
+            opt.classList.remove('selected');
+            if (checkIcon) checkIcon.classList.add('hidden');
+        }
+    });
+}
+
+function setupDragAndDrop() {
+    const dropZone = document.body;
+
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, preventDefaults, false);
+    });
+
+    function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+
+    dropZone.addEventListener('drop', handleDrop, false);
+
+    function handleDrop(e) {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        handleFiles({ target: { files: files } });
+    }
+
+    // Modal Drop Zone specific logic
+    const modalDropZone = document.getElementById('modal-drop-zone');
+    if (modalDropZone) {
+        ['dragenter', 'dragover'].forEach(eventName => {
+            modalDropZone.addEventListener(eventName, () => modalDropZone.classList.add('dragover'), false);
+        });
+        ['dragleave', 'drop'].forEach(eventName => {
+            modalDropZone.addEventListener(eventName, () => modalDropZone.classList.remove('dragover'), false);
+        });
+        modalDropZone.addEventListener('drop', (e) => {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            handleFiles({ target: { files: files } });
+        });
+    }
+}
+
+// --- Core Logic ---
+
+async function sendMessage() {
+    const text = chatInput.value.trim();
+    if (!text) return;
+
+    // UI Updates
     chatInput.value = '';
-    
-    // Add to conversation history
-    conversationHistory.push({
-        role: 'user',
-        content: query
-    });
-    
-    // Update conversation count
-    updateConversationCount();
-    
-    // Process query
-    processQuery(query);
-}
+    chatInput.style.height = 'auto'; // Reset height
+    emptyState.classList.add('hidden'); // Hide empty state
 
-// Process query with API
-async function processQuery(query) {
+    // Add User Message
+    addMessage(text, 'user');
+
+    // Show Typing Indicator
+    const typingIndicator = addTypingIndicator();
+
     try {
-        // Add loading indicator
-        const loadingEl = addLoadingIndicator();
-        
-        // Send request to API
         const response = await fetch(`${API_BASE_URL}/query`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                query,
-                session_id: sessionId
+                query: text,
+                session_id: sessionId,
+                mode: currentRagMode // Use top bar variable
             })
         });
-        
+
         const data = await response.json();
-        
-        // Remove loading indicator
-        loadingEl.remove();
-        
+
+        // Remove typing indicator
+        if (typingIndicator) typingIndicator.remove();
+
         if (data.error) {
-            showToast(data.error, 'error');
-            return;
+            addMessage(`Error: ${data.error}`, 'assistant', null, true);
+        } else {
+            addMessage(data.answer, 'assistant', data);
         }
-        
-        // Add response to UI
-        const answer = data.answer;
-        addMessage(answer, 'assistant', data);
-        
-        // Add to conversation history
-        conversationHistory.push({
-            role: 'assistant',
-            content: answer
-        });
-        
-        // Update conversation count
-        updateConversationCount();
-        
+
     } catch (error) {
-        console.error('Error processing query:', error);
-        showToast('Error connecting to API server. Please try again.', 'error');
+        if (typingIndicator) typingIndicator.remove();
+        addMessage("Sorry, I couldn't connect to the server.", 'assistant', null, true);
+        console.error(error);
     }
 }
 
-// Add message to UI
-function addMessage(text, role, data = null) {
-    const messageEl = document.createElement('div');
-    messageEl.className = `message ${role}`;
-    messageEl.textContent = text;
-    
-    // Set initial state for animation
-    messageEl.style.opacity = '0';
-    messageEl.style.transform = 'translateY(20px)';
-    
-    // Add to chat messages
-    chatMessages.appendChild(messageEl);
-    
-    // Trigger animation after a small delay
-    setTimeout(() => {
-        messageEl.style.transition = 'opacity 0.3s ease-out, transform 0.3s ease-out';
-        messageEl.style.opacity = '1';
-        messageEl.style.transform = 'translateY(0)';
-    }, 10);
-    
-    // Add metadata for assistant messages
-    if (role === 'assistant' && data) {
-        // Add confidence indicator, sources, etc.
-        const metaEl = document.createElement('div');
-        metaEl.className = 'response-meta';
-        
-        // Confidence
-        if (data.confidence) {
-            const confidenceEl = document.createElement('div');
-            confidenceEl.className = 'response-section';
-            confidenceEl.innerHTML = `
-                <h4>Confidence</h4>
-                <span class="confidence-indicator confidence-${data.confidence}">
-                    ${capitalizeFirstLetter(data.confidence)}
-                </span>
-            `;
-            metaEl.appendChild(confidenceEl);
-        }
-        
-        // Sources
-        if (data.sources && data.sources.length) {
-            const sourcesEl = document.createElement('div');
-            sourcesEl.className = 'response-section collapsible';
-            sourcesEl.innerHTML = '<h4>Sources</h4>';
-            
-            const sourcesList = document.createElement('div');
-            sourcesList.className = 'sources-list';
-            
-            data.sources.forEach(source => {
-                const sourceEl = document.createElement('div');
-                sourceEl.className = 'source-item';
-                
-                let sourceText = source.document;
-                if (source.title) {
-                    sourceText = source.title;
-                } else if (source.original_filename) {
-                    sourceText = source.original_filename;
-                }
-                
-                if (source.page) {
-                    sourceText += ` (Page ${source.page})`;
-                }
-                
-                sourceEl.textContent = sourceText;
-                sourcesList.appendChild(sourceEl);
-            });
-            
-            sourcesEl.appendChild(sourcesList);
-            metaEl.appendChild(sourcesEl);
-            
-            // Add click handler to make sources collapsible
-            const sourcesHeader = sourcesEl.querySelector('h4');
-            sourcesHeader.addEventListener('click', () => {
-                sourcesEl.classList.toggle('collapsed');
-            });
-        }
-        
-        // Metrics (optional)
-        if (data.evaluation) {
-            const metricsEl = document.createElement('div');
-            metricsEl.className = 'response-section collapsible';
-            metricsEl.innerHTML = '<h4>Evaluation Metrics</h4>';
-            
-            const metricsContainer = document.createElement('div');
-            metricsContainer.className = 'metrics-container';
-            
-            Object.keys(data.evaluation).forEach(key => {
-                if (key === 'total_score' || key === 'response_time') return;
-                
-                const value = data.evaluation[key];
-                const metricEl = document.createElement('div');
-                metricEl.className = 'metric-detail';
-                
-                const label = key.split('_').map(capitalizeFirstLetter).join(' ');
-                
-                metricEl.innerHTML = `
-                    <span class="metric-detail-label">${label}</span>
-                    <span class="metric-detail-value">${(value * 100).toFixed(0)}%</span>
-                    <div class="progress-bar">
-                        <div class="progress-bar-fill" style="width: ${value * 100}%"></div>
+function addMessage(text, role, metadata = null, isError = false) {
+    const msgDiv = document.createElement('div');
+    msgDiv.className = `message ${role}`;
+
+    // Avatar
+    const avatar = document.createElement('div');
+    avatar.className = `avatar ${role}`;
+    avatar.innerHTML = role === 'user' ? '<i class="fas fa-user"></i>' : '<i class="fas fa-robot"></i>';
+
+    // Content
+    const contentDiv = document.createElement('div');
+    contentDiv.className = 'message-content';
+
+    if (isError) {
+        contentDiv.style.color = 'var(--danger-color)';
+        contentDiv.textContent = text;
+    } else {
+        // Parse Markdown
+        marked.setOptions({
+            highlight: function (code, lang) {
+                const language = highlight.getLanguage(lang) ? lang : 'plaintext';
+                return highlight.highlight(code, { language }).value;
+            },
+            langPrefix: 'hljs language-'
+        });
+
+        contentDiv.innerHTML = marked.parse(text);
+
+        // --- Extended Metadata (Visualize Logic) ---
+        if (role === 'assistant' && metadata) {
+
+            // Confidence tag removed as requested
+
+            // Meta Actions Container (Side-by-Side Buttons)
+            const metaActionsDiv = document.createElement('div');
+            metaActionsDiv.className = 'meta-actions';
+
+            // 2. Reasoning Trace (Enhanced with meaningful info)
+            if (metadata.reasoning_trace && metadata.reasoning_trace.length > 0) {
+                const traceDiv = document.createElement('details');
+                traceDiv.open = false;
+                // traceDiv.style.marginTop removed in favor of CSS class
+
+                const stepsHtml = metadata.reasoning_trace.map((step) => {
+                    let icon = 'fa-search';
+                    let label = '';
+                    let description = '';
+                    let cssClass = 'reasoning-query';
+
+                    // Format each step based on its type
+                    if (step.step === 'query_analysis') {
+                        icon = 'fa-brain';
+                        label = '1. Query Analysis';
+                        description = `Complexity: <strong>${step.complexity || 'N/A'}</strong>, Intent: <strong>${step.intent || 'N/A'}</strong>`;
+                        cssClass = 'reasoning-query';
+                    } else if (step.step === 'tool_selection') {
+                        icon = 'fa-cogs';
+                        label = '2. Tool Selection';
+                        if (step.tools && step.tools.length > 0) {
+                            const toolsList = step.tools.map(t => `<strong>${t.name}</strong>`).join(', ');
+                            description = `Selected: ${toolsList}`;
+                        } else {
+                            description = `Selected tools: ${step.selected_tools || 'N/A'}`;
+                        }
+                        cssClass = 'reasoning-query';
+                    } else if (step.step === 'execution_plan') {
+                        icon = 'fa-project-diagram';
+                        label = '3. Execution Plan';
+                        description = `Strategy: <strong>${step.strategy || 'N/A'}</strong>, Tools: ${step.tool_count || 0}`;
+                        cssClass = 'reasoning-query';
+                    } else if (step.step === 'execute_tool') {
+                        icon = 'fa-play-circle';
+                        label = `▶ Execute Tool`;
+                        description = `Running <strong>${step.tool || 'unknown'}</strong>`;
+                        cssClass = 'reasoning-tool';
+                    } else if (step.step === 'tool_success') {
+                        icon = 'fa-check-circle';
+                        label = `✓ Tool Success`;
+                        description = `<strong>${step.tool || 'unknown'}</strong> returned ${step.citations_count || 0} results`;
+                        cssClass = 'reasoning-tool';
+                    } else if (step.step === 'tool_failure') {
+                        icon = 'fa-exclamation-circle';
+                        label = `✗ Tool Failed`;
+                        description = `<strong>${step.tool || 'unknown'}</strong>: ${step.error || 'Unknown error'}`;
+                        cssClass = 'reasoning-tool';
+                    } else {
+                        // Fallback for any other step types
+                        icon = 'fa-info-circle';
+                        label = step.step || step.action || 'Unknown';
+                        description = JSON.stringify(step).substring(0, 100);
+                        cssClass = 'reasoning-query';
+                    }
+
+                    return `
+                        <div class="reasoning-step ${cssClass}">
+                            <div class="step-header">
+                                <i class="fas ${icon}"></i>
+                                ${label}
+                            </div>
+                            <div class="step-content">
+                                ${description}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                traceDiv.innerHTML = `
+                    <summary><i class="fas fa-brain"></i> View Reasoning Process</summary>
+                    <div class="reasoning-container">
+                        ${stepsHtml}
                     </div>
                 `;
-                
-                metricsContainer.appendChild(metricEl);
-            });
-            
-            metricsEl.appendChild(metricsContainer);
-            metaEl.appendChild(metricsEl);
-            
-            // Add click handler to make metrics collapsible
-            const metricsHeader = metricsEl.querySelector('h4');
-            metricsHeader.addEventListener('click', () => {
-                metricsEl.classList.toggle('collapsed');
-            });
-        }
-        
-        // Add feedback section
-        const feedbackEl = document.createElement('div');
-        feedbackEl.className = 'feedback-section';
-        feedbackEl.innerHTML = `
-            <h4>Feedback</h4>
-            <div class="star-rating">
-                <button class="star-btn" data-rating="1">★</button>
-                <button class="star-btn" data-rating="2">★</button>
-                <button class="star-btn" data-rating="3">★</button>
-                <button class="star-btn" data-rating="4">★</button>
-                <button class="star-btn" data-rating="5">★</button>
-            </div>
-            <textarea class="feedback-textarea" placeholder="Any corrections or suggestions?"></textarea>
-            <button class="primary-btn submit-feedback-btn">Submit Feedback</button>
-        `;
-        
-        // Add event listeners for star rating and feedback submission
-        const starBtns = feedbackEl.querySelectorAll('.star-btn');
-        const feedbackTextarea = feedbackEl.querySelector('.feedback-textarea');
-        const submitBtn = feedbackEl.querySelector('.submit-feedback-btn');
-        
-        let selectedRating = 0;
-        
-        starBtns.forEach(btn => {
-            btn.addEventListener('click', () => {
-                const rating = parseInt(btn.dataset.rating);
-                selectedRating = rating;
-                
-                starBtns.forEach(b => {
-                    b.classList.toggle('selected', parseInt(b.dataset.rating) <= rating);
+                contentDiv.appendChild(metaActionsDiv); // Append container to content
+                metaActionsDiv.appendChild(traceDiv);   // Append detail to container
+            }
+
+            // 3. Evaluation Metrics (Circular)
+            if (metadata.evaluation) {
+                const evalDiv = document.createElement('details');
+                // evalDiv.style.marginTop removed in favor of CSS class
+
+                const metricsHtml = Object.entries(metadata.evaluation)
+                    .filter(([k]) => k !== 'total_score' && k !== 'response_time')
+                    .map(([k, v]) => {
+                        const percent = (v * 100).toFixed(0);
+                        const degrees = (v * 360).toFixed(0) + 'deg';
+
+                        return `
+                            <div class="metric-circle-container">
+                                <div class="metric-circle" style="--degrees: ${degrees}">
+                                    <span class="metric-value">${percent}%</span>
+                                </div>
+                                <span class="metric-label">${k.replace(/_/g, ' ')}</span>
+                            </div>
+                         `;
+                    }).join('');
+
+                evalDiv.innerHTML = `
+                    <summary><i class="fas fa-chart-pie"></i> Evaluation Metrics</summary>
+                    <div style="display:flex; gap:16px; margin-top:10px; flex-wrap:wrap; justify-content:center;">
+                        ${metricsHtml}
+                    </div>
+                `;
+
+                // Ensure container exists if reasoning wasn't present
+                if (!contentDiv.contains(metaActionsDiv)) {
+                    contentDiv.appendChild(metaActionsDiv);
+                }
+                metaActionsDiv.appendChild(evalDiv);
+            }
+
+            // 4. Sources (De-duplicated & Hidden Relevance)
+            if (metadata.sources && metadata.sources.length > 0) {
+                const sourcesDiv = document.createElement('div');
+                sourcesDiv.style.marginTop = '1.5rem';
+                sourcesDiv.style.borderTop = '1px solid var(--border-color)';
+                sourcesDiv.style.paddingTop = '1rem';
+
+                const sourcesTitle = document.createElement('div');
+                sourcesTitle.style.fontWeight = '600';
+                sourcesTitle.style.marginBottom = '0.5rem';
+                sourcesTitle.innerHTML = '<i class="fas fa-book-open"></i> Sources';
+                sourcesDiv.appendChild(sourcesTitle);
+
+                const sourcesGrid = document.createElement('div');
+                sourcesGrid.className = 'sources-grid';
+
+                // Deduplicate
+                const seenSources = new Set();
+                const uniqueSources = [];
+                metadata.sources.forEach(source => {
+                    const fname = source.document || source.original_filename || 'Unknown Document';
+                    if (!seenSources.has(fname)) {
+                        seenSources.add(fname);
+                        uniqueSources.push(source);
+                    }
+                });
+
+                uniqueSources.forEach((source) => {
+                    let fname = source.document || source.original_filename || 'Unknown Document';
+
+                    const card = document.createElement('div');
+                    card.className = 'source-card';
+                    card.innerHTML = `
+                        <div class="source-header" title="${fname}">
+                            <i class="fas fa-file-alt"></i> ${fname}
+                        </div>
+                        <div class="source-meta">
+                             ${source.page ? `<span class="tag tag-secondary">Pg ${source.page}</span>` : ''}
+                        </div>
+                    `;
+                    sourcesGrid.appendChild(card);
+                });
+                sourcesDiv.appendChild(sourcesGrid);
+                contentDiv.appendChild(sourcesDiv);
+            }
+
+            // 5. Feedback Form
+            const feedbackDiv = document.createElement('div');
+            feedbackDiv.style.marginTop = '1rem';
+            feedbackDiv.style.display = 'flex';
+            feedbackDiv.style.gap = '10px';
+            feedbackDiv.style.alignItems = 'center';
+            feedbackDiv.innerHTML = `
+                <button class="feedback-btn" data-rating="1" style="background:none; border:none; cursor:pointer; font-size:1rem; color:var(--text-secondary); hover:color:var(--text-primary);"><i class="fas fa-thumbs-up"></i></button>
+                <button class="feedback-btn" data-rating="0" style="background:none; border:none; cursor:pointer; font-size:1rem; color:var(--text-secondary); hover:color:var(--text-primary);"><i class="fas fa-thumbs-down"></i></button>
+            `;
+
+            const btns = feedbackDiv.querySelectorAll('.feedback-btn');
+            btns.forEach(btn => {
+                btn.addEventListener('click', function () {
+                    const rating = this.dataset.rating;
+                    submitFeedback(text, metadata.answer, rating);
+                    feedbackDiv.innerHTML = '<span style="font-size: 0.8rem; color: var(--primary-color);">Thanks for your feedback!</span>';
                 });
             });
-        });
-        
-        submitBtn.addEventListener('click', () => {
-            if (selectedRating === 0) {
-                showToast('Please select a rating first.', 'warning');
-                return;
-            }
-            
-            submitFeedback(text, data.answer, selectedRating, feedbackTextarea.value);
-            feedbackEl.innerHTML = '<p class="success-message">Thank you for your feedback!</p>';
-        });
-        
-        metaEl.appendChild(feedbackEl);
-        
-        // Append meta element to message
-        messageEl.appendChild(metaEl);
+
+            contentDiv.appendChild(feedbackDiv);
+        }
     }
-    
+
+    msgDiv.appendChild(avatar);
+    msgDiv.appendChild(contentDiv);
+
+    chatMessages.appendChild(msgDiv);
+
     // Scroll to bottom
-    chatMessages.scrollTop = chatMessages.scrollHeight;
+    if (chatMessages) {
+        chatMessages.scrollTo({ top: chatMessages.scrollHeight, behavior: 'smooth' });
+    }
 }
 
-// Submit feedback to API
-async function submitFeedback(query, answer, rating, feedbackText) {
+function addTypingIndicator() {
+    const msgDiv = document.createElement('div');
+    msgDiv.className = 'message assistant';
+
+    const avatar = document.createElement('div');
+    avatar.className = 'avatar assistant';
+    avatar.innerHTML = '<i class="fas fa-robot"></i>';
+
+    const content = document.createElement('div');
+    content.className = 'message-content';
+    content.innerHTML = `
+        <div class="typing-indicator">
+            <span style="color: var(--text-secondary); font-size: 0.9rem; margin-right: 8px;">Thinking</span>
+            <div class="typing-dot"></div>
+            <div class="typing-dot"></div>
+            <div class="typing-dot"></div>
+        </div>
+    `;
+
+    msgDiv.appendChild(avatar);
+    msgDiv.appendChild(content);
+    chatMessages.appendChild(msgDiv);
+
+    // Scroll to bottom
+    if (chatMessages) {
+        chatMessages.scrollTo({ top: chatMessages.scrollHeight, behavior: 'smooth' });
+    }
+
+    return msgDiv;
+}
+
+// --- File Handling ---
+
+function handleFileUpload(e) {
+    handleFiles(e);
+}
+
+function handleFiles(e) {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    for (let file of files) {
+        if (!file.name.toLowerCase().endsWith('.pdf')) {
+            showToast(`Skipping ${file.name}: Only PDFs allowed`, 'warning');
+            continue;
+        }
+
+        uploadFile(file);
+    }
+
+    fileUpload.value = '';
+}
+
+async function uploadFile(file) {
+    showToast(`Uploading ${file.name}...`, 'info'); // 1. Show processing indicator
+
+    const formData = new FormData();
+    formData.append('file', new Blob([file], { type: 'application/pdf' }), file.name);
+
     try {
-        const response = await fetch(`${API_BASE_URL}/feedback`, {
+        const response = await fetch(`${API_BASE_URL}/upload`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
+            body: formData
+        });
+        const data = await response.json();
+
+        if (data.error) {
+            console.error('Upload failed:', data.error);
+            showToast(`Upload failed: ${data.error}`, 'error');
+        } else {
+            console.log('Upload success:', data);
+            showToast(`${file.name} uploaded successfully`, 'success');
+
+            // 2. Refresh lists immediately
+            await updateProcessedFilesList();
+            updateModalFileList();
+        }
+    } catch (err) {
+        console.error(err);
+        showToast('Upload failed: Connection error', 'error');
+    }
+}
+
+// Global processed files array to store state
+let processedFiles = [];
+
+async function updateProcessedFilesList() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/files`);
+        const data = await response.json();
+
+        if (data.files) {
+            processedFiles = data.files;
+            docCountEl.textContent = processedFiles.length;
+        }
+
+    } catch (err) {
+        console.error("Failed to load files", err);
+    }
+}
+
+function updateModalFileList() {
+    modalFileList.innerHTML = '';
+
+    if (processedFiles.length === 0) {
+        modalFileList.innerHTML = '<div style="text-align:center; padding: 20px; color: var(--text-secondary);">No documents uploaded yet.</div>';
+        return;
+    }
+
+    processedFiles.forEach(file => {
+        const item = document.createElement('div');
+        item.className = 'file-item';
+        item.innerHTML = `
+            <div style="display:flex; align-items:center; gap:10px;">
+                <i class="fas fa-file-pdf" style="color: var(--danger-color);"></i>
+                <span class="file-name" style="font-weight:500;">${file.filename}</span>
+            </div>
+            <div style="font-size:0.8rem; color:var(--text-secondary);">
+                ${(file.size / 1024).toFixed(1)} KB
+            </div>
+        `;
+        modalFileList.appendChild(item);
+    });
+}
+
+// Modal Helpers
+function openModal(modalId) {
+    document.getElementById('modal-overlay').classList.remove('hidden');
+    document.getElementById(modalId).classList.remove('hidden');
+}
+
+function closeModals() {
+    document.getElementById('modal-overlay').classList.add('hidden');
+    document.querySelectorAll('.modal').forEach(m => m.classList.add('hidden'));
+}
+window.closeModals = closeModals; // Expose to global for onclick
+
+async function clearKnowledgeBase() {
+    if (!confirm("Are you sure you want to clear the entire Knowledge Base?")) return;
+
+    try {
+        await fetch(`${API_BASE_URL}/collection`, { method: 'DELETE' });
+        processedFiles = [];
+        docCountEl.textContent = '0';
+        updateModalFileList();
+        showToast("Knowledge Base cleared.", 'success');
+        closeModals();
+
+    } catch (err) {
+        console.error(err);
+        showToast("Failed to clear knowledge base.", 'error');
+    }
+}
+
+async function submitFeedback(query, answer, rating) {
+    try {
+        await fetch(`${API_BASE_URL}/feedback`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 query,
                 answer,
                 rating,
-                feedback_text: feedbackText,
                 session_id: sessionId
             })
         });
-        
-        const data = await response.json();
-        
-        if (data.error) {
-            showToast(data.error, 'error');
-            return;
-        }
-        
-        showToast('Feedback submitted successfully!', 'success');
-        
-    } catch (error) {
-        console.error('Error submitting feedback:', error);
-        showToast('Error submitting feedback. Please try again.', 'error');
+        console.log('Feedback submitted');
+    } catch (err) {
+        console.error('Error submitting feedback', err);
     }
 }
 
-// Handle file upload
-function handleFileUpload() {
-    const selectedFilesContainer = document.getElementById('selected-files-container');
-    selectedFilesContainer.innerHTML = '';
-    
-    // Add newly selected files to our tracking array
-    if (fileUpload.files.length > 0) {
-        // Add new files to our selection array
-        Array.from(fileUpload.files).forEach(file => {
-            // Check if this file is already in our selection to avoid duplicates
-            const isDuplicate = selectedFiles.some(f => 
-                f.name === file.name && f.size === file.size && f.lastModified === file.lastModified
-            );
-            
-            if (isDuplicate) {
-                return; // Skip duplicate files
-            }
-            
-            // Validate file before adding
-            const validation = validatePdfFile(file);
-            if (!validation.isValid) {
-                showToast(`${file.name}: ${validation.message}`, 'warning');
-                return;
-            }
-            
-            // Add valid file to our selection
-            selectedFiles.push(file);
-        });
-        
-        // Reset the file input to prevent duplicate submissions
-        fileUpload.value = '';
-    }
-    
-    if (selectedFiles.length > 0) {
-        processDocsBtn.disabled = false;
-        
-        // Display selected files with animation
-        selectedFiles.forEach((file, index) => {
-            const fileItem = document.createElement('div');
-            fileItem.className = 'selected-file-item';
-            
-            // Set up for animation
-            fileItem.style.opacity = '0';
-            fileItem.style.transform = 'translateY(10px)';
-            
-            // Validate file to show proper status
-            const validation = validatePdfFile(file);
-            const validationClass = validation.isValid ? 'file-valid' : 'file-invalid';
-            const validationStatus = validation.isValid ? 'Ready to process' : validation.message;
-            const fileIcon = validation.isValid ? '<i class="fas fa-file-pdf"></i>' : '<i class="fas fa-exclamation-triangle"></i>';
-            
-            fileItem.innerHTML = `
-                <div class="selected-file-header">
-                    <span>${fileIcon} ${file.name}</span>
-                    <button class="remove-file-btn" data-index="${index}" title="Remove file">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-                <div class="selected-file-details">
-                    <div>Size: ${(file.size / 1024).toFixed(1)} KB</div>
-                    <div class="${validationClass}">
-                        <i class="fas ${validation.isValid ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i>
-                        ${validationStatus}
-                    </div>
-                </div>
-            `;
-            
-            selectedFilesContainer.appendChild(fileItem);
-            
-            // Trigger animation after a small delay to ensure DOM update
-            setTimeout(() => {
-                fileItem.style.transition = 'opacity 0.3s ease-out, transform 0.3s ease-out';
-                fileItem.style.opacity = '1';
-                fileItem.style.transform = 'translateY(0)';
-            }, 10 + (index * 50)); // Stagger animations
-        });
-        
-        // Add event listeners to remove buttons
-        const removeButtons = selectedFilesContainer.querySelectorAll('.remove-file-btn');
-        removeButtons.forEach(btn => {
-            btn.addEventListener('click', function(e) {
-                e.preventDefault();
-                removeSelectedFile(parseInt(this.dataset.index));
-            });
-        });
-        
-        // Show summary if multiple files
-        if (selectedFiles.length > 1) {
-            const summaryEl = document.createElement('div');
-            summaryEl.className = 'selected-files-summary';
-            
-            summaryEl.innerHTML = `
-                <span>${selectedFiles.length} files selected</span>
-                <button id="clear-all-files" class="text-btn">Clear all</button>
-            `;
-            
-            selectedFilesContainer.appendChild(summaryEl);
-            
-            // Add event listener for clear all button
-            document.getElementById('clear-all-files').addEventListener('click', clearAllSelectedFiles);
-        }
-    } else {
-        processDocsBtn.disabled = true;
-    }
-}
-
-// Remove a file from the selection
-function removeSelectedFile(index) {
-    // Remove file at specific index from our array
-    if (index >= 0 && index < selectedFiles.length) {
-        selectedFiles.splice(index, 1);
-    }
-    
-    // Update the UI
-    handleFileUpload();
-}
-
-// Clear all selected files
-function clearAllSelectedFiles() {
-    // Clear our array
-    selectedFiles = [];
-    
-    // Reset the file input for good measure
-    fileUpload.value = '';
-    
-    // Update the UI
-    handleFileUpload();
-}
-
-// Validate a PDF file before upload
-function validatePdfFile(file) {
-    // Check if it's a PDF file
-    if (!file.name.toLowerCase().endsWith('.pdf')) {
-        return {
-            isValid: false,
-            message: "Only PDF files are allowed"
-        };
-    }
-    
-    // Check if file is empty
-    if (file.size === 0) {
-        return {
-            isValid: false,
-            message: "File is empty"
-        };
-    }
-    
-    // Check file size (limit to 50MB)
-    const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
-    if (file.size > MAX_FILE_SIZE) {
-        return {
-            isValid: false,
-            message: "File size must be less than 50MB"
-        };
-    }
-    
-    return {
-        isValid: true,
-        message: "File is valid"
-    };
-}
-
-// Process documents
-async function processDocuments() {
-    if (!selectedFiles || selectedFiles.length === 0) {
-        showToast('No files selected', 'warning');
-        return;
-    }
-    
-    // Check if all files are valid
-    let hasInvalidFile = false;
-    for (let i = 0; i < selectedFiles.length; i++) {
-        const validation = validatePdfFile(selectedFiles[i]);
-        if (!validation.isValid) {
-            hasInvalidFile = true;
-            showToast(`Error: ${selectedFiles[i].name} - ${validation.message}`, 'error');
-        }
-        
-        // Double-check file content by reading a small sample
-        try {
-            const fileSlice = selectedFiles[i].slice(0, 1024); // Read first 1KB to verify content
-            const reader = new FileReader();
-            
-            // Use promise to make it work with async/await
-            const hasContent = await new Promise((resolve) => {
-                reader.onloadend = function(e) {
-                    // Check if we got any actual content
-                    resolve(e.target.result && e.target.result.byteLength > 0);
-                };
-                reader.readAsArrayBuffer(fileSlice);
-            });
-            
-            if (!hasContent) {
-                hasInvalidFile = true;
-                showToast(`Error: ${selectedFiles[i].name} - File appears to be empty or corrupted`, 'error');
-            }
-        } catch (error) {
-            console.error(`Error checking file content for ${selectedFiles[i].name}:`, error);
-        }
-    }
-    
-    if (hasInvalidFile) {
-        return;
-    }
-    
-    // Disable button and show processing state
-    const originalText = processDocsBtn.textContent;
-    processDocsBtn.disabled = true;
-    processDocsBtn.textContent = 'Processing...';
-    
-    // Save the selected files container content for reference
-    const selectedFilesContainer = document.getElementById('selected-files-container');
-    const selectedFilesHtml = selectedFilesContainer.innerHTML;
-    
+async function checkSystemStatus() {
     try {
-        // Process each file
-        for (let i = 0; i < selectedFiles.length; i++) {
-            const file = selectedFiles[i];
-            
-            // Update button text to show current file
-            processDocsBtn.textContent = `Processing ${i+1}/${selectedFiles.length}...`;
-            
-            // Progress text
-            const progressText = `Processing ${file.name} (${i+1}/${selectedFiles.length})...`;
-            const progressPercent = Math.round(((i + 0.5) / selectedFiles.length) * 100);
-            
-            // Update UI with status - this will now add to notification panel too
-            updateDocumentStatus(file, 'processing', `${progressText} ${progressPercent}%`);
-            
-            // Create new FormData for each file to ensure clean state
-            const formData = new FormData();
-            
-            // Create a new Blob from the File to ensure content is preserved
-            const fileBlob = new Blob([file], { type: 'application/pdf' });
-            
-            // Add to FormData with original filename
-            formData.append('file', fileBlob, file.name);
-            
-            console.log('Uploading file:', file.name, 'Size:', file.size, 'Type:', file.type);
-            
-            // Upload and process file with correct content type
-            const response = await fetch(`${API_BASE_URL}/upload`, {
-                method: 'POST',
-                body: formData
-            });
-            
-            const data = await response.json();
-            
-            if (data.error) {
-                console.error('File upload error:', data.error);
-                
-                // Update UI and notification to show error
-                updateDocumentStatus(file, 'error', `Error: ${data.error}`);
-                continue;
-            }
-            
-            // Add to processed files
-            if (data.file_info) {
-                console.log('File processed successfully:', data.file_info);
-                
-                // Update status to success
-                updateDocumentStatus(file, 'success', 'Successfully processed');
-                
-                // Update with real data from API
-                await updateProcessedFilesList();
-                
-                // Update status to success (this updates the notification too)
-                updateDocumentStatus(file, 'success', 'Successfully processed');
-            } else {
-                console.warn('No file_info in response:', data);
-                
-                // Update UI to show warning
-                updateDocumentStatus(file, 'error', 'No file data returned from server');
-            }
-        }
-        
-        // Update system status
-        await checkSystemStatus();
-        
-        // Reset file input, button, and selected files container
-        const fileCount = selectedFiles.length;
-        fileUpload.value = '';
-        selectedFiles = []; // Clear our selected files array
-        document.getElementById('selected-files-container').innerHTML = '';
-        processDocsBtn.disabled = true;
-        processDocsBtn.textContent = originalText;
-        
-        // Add a summary notification
-        addNotification(`🎉 All ${fileCount} documents processed successfully!`, 'success');
-        
-    } catch (error) {
-        console.error('Error processing documents:', error);
-        addNotification('Error connecting to API server. Please try again.', 'error');
-    } finally {
-        // Restore button state
-        processDocsBtn.textContent = originalText;
-        processDocsBtn.disabled = fileUpload.files.length === 0;
-    }
-}
-
-// Update document processing status
-function updateDocumentStatus(file, status = 'processing', message = null) {
-    const statusClass = {
-        'processing': 'file-processing',
-        'success': 'file-success',
-        'error': 'error-message'
-    };
-    
-    // Track notification ID for updates
-    if (!file.notificationId) {
-        // Create icon for notification
-        const icon = status === 'processing' ? '⏳' : status === 'success' ? '✅' : '❌';
-        const statusMessage = message || (status === 'processing' ? 'Processing... please wait' : 
-                              status === 'success' ? 'Successfully processed' : 'Error processing file');
-        
-        // Create notification message
-        const notificationMsg = `${icon} ${file.name}: ${statusMessage}`;
-        
-        // Add to the notification panel
-        file.notificationId = showNotification(notificationMsg, status === 'processing' ? 'info' : status);
-    } else if (file.notificationId) {
-        // Update existing notification
-        const icon = status === 'processing' ? '⏳' : status === 'success' ? '✅' : '❌';
-        const statusMessage = message || (status === 'processing' ? 'Processing... please wait' : 
-                              status === 'success' ? 'Successfully processed' : 'Error processing file');
-        
-        // Update notification message
-        const notificationMsg = `${icon} ${file.name}: ${statusMessage}`;
-        
-        // Update notification
-        updateNotification(file.notificationId, notificationMsg, status === 'processing' ? 'info' : status);
-    }
-    
-    // Look for existing temporary element for this file (UI in sidebar)
-    const existingElements = Array.from(processedFilesList.children);
-    const tempElement = existingElements.find(el => 
-        el.textContent.includes(file.name) && 
-        el.classList.contains('file-processing')
-    );
-    
-    if (tempElement) {
-        // Update existing element
-        tempElement.className = `file-item ${statusClass[status] || 'file-processing'}`;
-        
-        const headerSpan = tempElement.querySelector('.file-item-header span');
-        const detailsDiv = tempElement.querySelector('.file-item-details');
-        
-        if (headerSpan) {
-            const icon = status === 'processing' ? '⏳' : status === 'success' ? '✅' : '❌';
-            headerSpan.innerHTML = `${icon} ${file.name}`;
-        }
-        
-        if (detailsDiv) {
-            if (message) {
-                detailsDiv.innerHTML = `<div>${message}</div>
-                    <div>Size: ${(file.size / 1024).toFixed(1)} KB</div>`;
-            } else if (status === 'success') {
-                detailsDiv.innerHTML = `<div>Successfully processed</div>
-                    <div>Size: ${(file.size / 1024).toFixed(1)} KB</div>`;
-            }
-        }
-    } else {
-        // Create a new status element
-        const newElement = document.createElement('div');
-        newElement.className = `file-item ${statusClass[status] || 'file-processing'}`;
-        
-        const icon = status === 'processing' ? '⏳' : status === 'success' ? '✅' : '❌';
-        const statusMessage = message || (status === 'processing' ? 'Processing... please wait' : 
-                              status === 'success' ? 'Successfully processed' : 'Error processing file');
-        
-        newElement.innerHTML = `
-            <div class="file-item-header">
-                <span>${icon} ${file.name}</span>
-            </div>
-            <div class="file-item-details">
-                <div>${statusMessage}</div>
-                <div>Size: ${(file.size / 1024).toFixed(1)} KB</div>
-            </div>
-        `;
-        
-        processedFilesList.appendChild(newElement);
-    }
-}
-
-// Update processed files list
-async function updateProcessedFilesList() {
-    try {
-        console.log('Updating processed files list...');
-        // Show loading state
-        processedFilesList.innerHTML = '<div class="loading">Loading files...</div>';
-        
-        // Fetch processed files from API
-        const response = await fetch(`${API_BASE_URL}/files`);
-        if (!response.ok) {
-            throw new Error(`API responded with status: ${response.status}`);
-        }
-        
+        const response = await fetch(`${API_BASE_URL}/status`);
         const data = await response.json();
-        
-        if (data.error) {
-            console.error('Error fetching processed files:', data.error);
-            processedFilesList.innerHTML = '<div class="error-message">Error loading processed files</div>';
-            return;
+        const embedModelEl = document.getElementById('embed-model');
+        const ollamaStatusEl = document.getElementById('ollama-status');
+
+        if (data.collection?.embedding_model && embedModelEl) {
+            embedModelEl.textContent = data.collection.embedding_model;
         }
-        
-        // Update global variable
-        processedFiles = data.files || [];
-        
-        // Clear the list
-        processedFilesList.innerHTML = '';
-        
-        // Display empty state if no files
-        if (processedFiles.length === 0) {
-            processedFilesList.innerHTML = '<div class="empty-state">No documents processed yet</div>';
-            return;
+        if (ollamaStatusEl) {
+            ollamaStatusEl.textContent = data.ollama_available ? 'Available' : 'Not Detected';
+            ollamaStatusEl.style.color = data.ollama_available ? 'var(--primary-color)' : 'var(--danger-color)';
         }
-        
-        // Display each file
-        processedFiles.forEach((file, index) => {
-            const fileEl = document.createElement('div');
-            fileEl.className = 'file-item file-success';
-            
-            const icon = file.auto_loaded ? '🔄' : '📄';
-            
-            fileEl.innerHTML = `
-                <div class="file-item-header">
-                    <span>${icon} ${file.filename}</span>
-                </div>
-                <div class="file-item-details">
-                    <div><strong>Size:</strong> ${(file.size / 1024).toFixed(1)} KB</div>
-                    <div><strong>Chunks:</strong> ${file.chunks}</div>
-                    <div><strong>Extraction:</strong> ${file.extraction_method}</div>
-                    <div><strong>Processed:</strong> ${file.timestamp}</div>
-                    ${file.auto_loaded ? '<div><strong>Source:</strong> Auto-loaded from documents directory</div>' : ''}
-                </div>
-            `;
-            
-            processedFilesList.appendChild(fileEl);
-        });
-    } catch (error) {
-        console.error('Error updating processed files list:', error);
-        processedFilesList.innerHTML = '<div class="error-message">Error loading processed files: ' + error.message + '</div>';
-    }
-    
-    // Update document count in UI
-    if (processedFiles) {
-        docCount.textContent = processedFiles.length;
-        analyticsDocCount.textContent = processedFiles.length;
+
+    } catch (err) {
+        console.error("System status check failed", err);
     }
 }
 
-// Clear knowledge base
-async function clearKnowledgeBase() {
-    try {
-        const response = await fetch(`${API_BASE_URL}/collection`, {
-            method: 'DELETE'
-        });
-        
-        const data = await response.json();
-        
-        if (data.error) {
-            showToast(data.error, 'error');
-            return;
-        }
-        
-        // Reset state
-        processedFiles = [];
-        await updateProcessedFilesList();
-        
-        // Reset confirmation UI
-        confirmClearCheckbox.checked = false;
-        confirmClear.classList.add('hidden');
-        confirmClearBtn.disabled = true;
-        
-        // Update system status
-        checkSystemStatus();
-        
-        showToast('Knowledge base cleared successfully!', 'success');
-        
-    } catch (error) {
-        console.error('Error clearing knowledge base:', error);
-        showToast('Error connecting to API server. Please try again.', 'error');
-    }
-}
-
-// Show a modal
-function showModal(modal) {
-    modalOverlay.classList.remove('hidden');
-    modal.classList.remove('hidden');
-}
-
-// Close all modals
-function closeModals() {
-    modalOverlay.classList.add('hidden');
-    document.querySelectorAll('.modal').forEach(modal => {
-        modal.classList.add('hidden');
-    });
-}
-
-// Update conversation count
-function updateConversationCount() {
-    const count = Math.floor(conversationHistory.length / 2);
-    conversationCountEl.textContent = count;
-}
-
-// Export conversation
-function exportConversation() {
-    if (conversationHistory.length === 0) {
-        showToast('No conversation to export.', 'warning');
-        return;
-    }
-    
-    const json = JSON.stringify(conversationHistory, null, 2);
-    const blob = new Blob([json], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `conversation_${sessionId}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-}
-
-// Clear conversation
-function clearConversation() {
-    conversationHistory = [];
-    chatMessages.innerHTML = '';
-    updateConversationCount();
-    showToast('Conversation history cleared!', 'success');
-}
-
-// Switch tab with smooth animation
-function switchTab(tabId) {
-    // Get current and target panes
-    const currentPane = document.querySelector('.tab-pane.active');
-    const targetPane = document.getElementById(`${tabId}-tab`);
-    
-    // No change if clicking current tab
-    if (currentPane === targetPane) return;
-    
-    // Update button states
-    tabBtns.forEach(btn => {
-        btn.classList.remove('active');
-        if (btn.dataset.tab === tabId) {
-            btn.classList.add('active');
-        }
-    });
-    
-    // If there's an active pane, animate it out first
-    if (currentPane) {
-        // First set transition
-        currentPane.style.transition = 'opacity 0.3s ease-out, transform 0.3s ease-out';
-        // Then animate out
-        currentPane.style.opacity = '0';
-        currentPane.style.transform = 'translateY(10px)';
-        
-        // After animation completes, hide current and show new
-        setTimeout(() => {
-            currentPane.classList.remove('active');
-            currentPane.style.display = 'none'; // Ensure it's hidden
-            
-            // Prepare target for animation
-            targetPane.classList.add('active');
-            targetPane.style.opacity = '0';
-            targetPane.style.transform = 'translateY(10px)';
-            targetPane.style.display = 'flex';
-            
-            // Trigger animation in
-            setTimeout(() => {
-                targetPane.style.transition = 'opacity 0.3s ease-out, transform 0.3s ease-out';
-                targetPane.style.opacity = '1';
-                targetPane.style.transform = 'translateY(0)';
-            }, 20);
-        }, 300);
-    } else {
-        // No active pane, just show the target with animation
-        targetPane.classList.add('active');
-        targetPane.style.opacity = '0';
-        targetPane.style.transform = 'translateY(10px)';
-        
-        setTimeout(() => {
-            targetPane.style.transition = 'opacity 0.3s ease-out, transform 0.3s ease-out';
-            targetPane.style.opacity = '1';
-            targetPane.style.transform = 'translateY(0)';
-        }, 20);
-    }
-}
-
-// Add loading indicator
-function addLoadingIndicator() {
-    const loaderEl = document.createElement('div');
-    loaderEl.className = 'loader-container';
-    loaderEl.innerHTML = '<div class="loader"></div>';
-    chatMessages.appendChild(loaderEl);
-    chatMessages.scrollTop = chatMessages.scrollHeight;
-    return loaderEl;
-}
-
-// Show a toast message - now uses the notification panel
 function showToast(message, type = 'info') {
-    // Add to the notification panel
-    showNotification(message, type);
-    
-    // Create a modern toast notification that will disappear after animation completes
-    let toastContainer = document.querySelector('.toast-container');
-    if (!toastContainer) {
-        toastContainer = document.createElement('div');
-        toastContainer.className = 'toast-container';
-        document.body.appendChild(toastContainer);
-    }
-    
-    // Get the appropriate icon based on type
-    let icon = '';
-    switch(type) {
-        case 'success':
-            icon = '<i class="fas fa-check-circle"></i> ';
-            break;
-        case 'warning':
-            icon = '<i class="fas fa-exclamation-triangle"></i> ';
-            break;
-        case 'error':
-            icon = '<i class="fas fa-times-circle"></i> ';
-            break;
-        default: // info
-            icon = '<i class="fas fa-info-circle"></i> ';
-    }
-    
-    // Create toast with animation
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+
     const toast = document.createElement('div');
-    toast.className = `toast toast-${type}`;
-    toast.innerHTML = `${icon} ${message}`;
-    
-    // Add toast to container
-    toastContainer.appendChild(toast);
-    
-    // Toast will be automatically removed after animation completes (defined in CSS)
-    // But we'll also manually remove it as a fallback
+    toast.style.padding = '12px 20px';
+    toast.style.borderRadius = '6px';
+    toast.style.color = '#fff';
+    toast.style.fontSize = '0.9rem';
+    toast.style.boxShadow = '0 4px 12px rgba(0,0,0,0.3)';
+    toast.style.display = 'flex';
+    toast.style.alignItems = 'center';
+    toast.style.gap = '10px';
+    toast.style.animation = 'fadeIn 0.3s ease-out';
+
+    const colors = {
+        success: '#10a37f',
+        error: '#ef4444',
+        warning: '#f59e0b',
+        info: '#3b82f6'
+    };
+    toast.style.backgroundColor = colors[type] || colors.info;
+
+    let icon = 'info-circle';
+    if (type === 'success') icon = 'check-circle';
+    if (type === 'error') icon = 'times-circle';
+    if (type === 'warning') icon = 'exclamation-triangle';
+
+    toast.innerHTML = `<i class="fas fa-${icon}"></i> ${message}`;
+
+    container.appendChild(toast);
+
     setTimeout(() => {
-        toast.classList.add('toast-fade-out');
-        setTimeout(() => {
-            if (toast.parentNode) {
-                toast.remove();
-            }
-        }, 500);
-    }, 3000);
+        toast.style.opacity = '0';
+        toast.style.transition = 'opacity 0.3s';
+        setTimeout(() => toast.remove(), 300);
+    }, 4000);
 }
 
-// Helper function to capitalize first letter
-function capitalizeFirstLetter(string) {
-    return string.charAt(0).toUpperCase() + string.slice(1);
+// Generate Session ID
+function generateSessionId() {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+        const r = Math.random() * 16 | 0;
+        const v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+    });
 }
-
-// Add toast styles
-const style = document.createElement('style');
-style.textContent = `
-    .toast-container {
-        position: fixed;
-        bottom: 20px;
-        right: 20px;
-        z-index: 1000;
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-    }
-    
-    .toast {
-        padding: 10px 20px;
-        border-radius: 4px;
-        color: white;
-        opacity: 1;
-        transition: opacity 0.3s ease;
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-    }
-    
-    .toast-info {
-        background-color: #17a2b8;
-    }
-    
-    .toast-success {
-        background-color: #28a745;
-    }
-    
-    .toast-warning {
-        background-color: #ffc107;
-        color: #333;
-    }
-    
-    .toast-error {
-        background-color: #dc3545;
-    }
-    
-    .toast-fade-out {
-        opacity: 0;
-    }
-`;
-document.head.appendChild(style);
-
-// Initialize on DOM content loaded
-document.addEventListener('DOMContentLoaded', init);

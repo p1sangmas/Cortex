@@ -1,0 +1,198 @@
+{
+  "name": "URL Document Ingestion",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ingest-url",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [240, 300],
+      "webhookId": "url-ingest-webhook"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.body.url }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "id": "download-file",
+      "name": "Download File from URL",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract filename from URL or use provided filename\nconst webhookData = $('Webhook Trigger').item.json.body;\nconst url = webhookData.url;\nconst providedFilename = webhookData.filename;\n\nlet filename;\nif (providedFilename) {\n  filename = providedFilename;\n} else {\n  // Extract from URL\n  const urlParts = url.split('/');\n  filename = urlParts[urlParts.length - 1].split('?')[0];\n  \n  // If no extension, add .pdf\n  if (!filename.includes('.')) {\n    filename = filename + '.pdf';\n  }\n}\n\n// Ensure it's a PDF\nif (!filename.toLowerCase().endsWith('.pdf')) {\n  filename = filename + '.pdf';\n}\n\n// IMPORTANT: Preserve binary data from previous node\nconst binaryData = $input.item.binary || {};\n\n// Set the filename in binary data if it exists\nif (binaryData.data) {\n  binaryData.data.fileName = filename;\n}\n\n// Return item with BOTH json and binary data\nreturn {\n  json: {\n    filename: filename,\n    url: url\n  },\n  binary: binaryData\n};"
+      },
+      "id": "prepare-metadata",
+      "name": "Prepare Metadata",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://cortex:8080/api/upload",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "file",
+              "parameterType": "formBinaryData",
+              "inputDataFieldName": "data"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "upload-to-cortex",
+      "name": "Upload to Cortex",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Format success response\nconst response = $input.item.json;\nconst metadata = $('Prepare Metadata').item.json;\n\nif (response.success) {\n  return {\n    success: true,\n    message: 'Document ingested successfully',\n    filename: metadata.filename,\n    url: metadata.url,\n    file_info: response.file_info,\n    ingestion_source: 'url',\n    timestamp: new Date().toISOString()\n  };\n} else {\n  return {\n    success: false,\n    message: 'Document ingestion failed',\n    error: response.error || 'Unknown error',\n    filename: metadata.filename,\n    url: metadata.url\n  };\n}"
+      },
+      "id": "format-response",
+      "name": "Format Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}"
+      },
+      "id": "respond-webhook",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1340, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Handle download errors\nconst error = $input.item.error;\nconst url = $('Webhook Trigger').item.json.body.url;\n\nreturn {\n  success: false,\n  message: 'Failed to download file from URL',\n  error: error ? error.message : 'Download failed',\n  url: url,\n  timestamp: new Date().toISOString()\n};"
+      },
+      "id": "handle-download-error",
+      "name": "Handle Download Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 480]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}"
+      },
+      "id": "respond-error",
+      "name": "Respond Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [900, 480]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Download File from URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download File from URL": {
+      "main": [
+        [
+          {
+            "node": "Prepare Metadata",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Handle Download Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Metadata": {
+      "main": [
+        [
+          {
+            "node": "Upload to Cortex",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload to Cortex": {
+      "main": [
+        [
+          {
+            "node": "Format Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Handle Download Error": {
+      "main": [
+        [
+          {
+            "node": "Respond Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2026-01-13T00:00:00.000Z",
+  "versionId": "1"
+}

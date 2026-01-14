@@ -61,42 +61,42 @@ class DocumentProcessor:
         pdf_path = Path(pdf_path)
         if not pdf_path.exists():
             raise FileNotFoundError(f"PDF file not found: {pdf_path}")
-            
+
         metadata = self._extract_metadata(pdf_path)
-        
+
         best_text = ""
         best_method = "none"
-        
+
         # Try standard extractors first
         standard_extractors = ['pymupdf', 'pdfplumber', 'pypdf2']
         for method_name in standard_extractors:
             if method_name not in self.processors:
                 continue
-                
+
             method = self.processors[method_name]
             try:
                 logger.info(f"Attempting extraction with {method_name}")
                 text = method(str(pdf_path))
-                
+
                 # Add debug logging
                 logger.debug(f"{method_name} extracted {len(text)} characters, {len(text.split())} words")
-                
+
                 if self._validate_extraction(text):
                     logger.info(f"Successfully extracted text using {method_name}")
                     return text, method_name, metadata
                 else:
                     logger.warning(f"{method_name} extraction failed validation")
                     logger.debug(f"Text preview: {text[:200]}...")
-                    
+
                     # Keep track of the best extraction so far
                     if len(text.strip()) > len(best_text.strip()):
                         best_text = text
                         best_method = method_name
-                    
+
             except Exception as e:
                 logger.warning(f"{method_name} extraction failed: {str(e)}")
                 continue
-        
+
         # Try OCR as a last resort if standard methods failed or produced poor results
         if (not best_text.strip() or len(best_text.split()) < 50 or self._needs_ocr(best_text)):
             if 'ocr' in self.processors:
@@ -104,63 +104,153 @@ class DocumentProcessor:
                     logger.info("Attempting OCR extraction as fallback")
                     text = self.processors['ocr'](str(pdf_path))
                     logger.debug(f"OCR extracted {len(text)} characters, {len(text.split())} words")
-                    
+
                     # OCR results don't need to pass strict validation
                     if text.strip() and len(text.split()) > 10:
                         logger.info("Successfully extracted text using OCR")
                         return text, 'ocr', metadata
-                        
+
                 except Exception as e:
                     logger.warning(f"OCR extraction failed: {str(e)}")
             else:
                 logger.warning("OCR would be helpful but dependencies are not installed")
-        
+
         # If we still have some text from earlier methods, use it
         if best_text.strip():
             logger.warning(f"No extraction method passed validation, using best result from {best_method}")
             logger.info(f"Extracted {len(best_text)} characters, {len(best_text.split())} words")
             return best_text, best_method, metadata
-                
+
         raise Exception("All extraction methods failed")
+
+    def extract_with_pages(self, pdf_path: str) -> Tuple[List[Tuple[str, int]], str, Dict]:
+        """
+        Extract text with page number tracking
+        Returns: (list of (page_text, page_number) tuples, method_used, metadata)
+        """
+        pdf_path = Path(pdf_path)
+        if not pdf_path.exists():
+            raise FileNotFoundError(f"PDF file not found: {pdf_path}")
+
+        metadata = self._extract_metadata(pdf_path)
+
+        # Try methods that support page tracking
+        page_aware_methods = ['pymupdf', 'pdfplumber', 'pypdf2']
+
+        for method_name in page_aware_methods:
+            if method_name not in self.processors:
+                continue
+
+            try:
+                logger.info(f"Attempting page-aware extraction with {method_name}")
+
+                if method_name == 'pymupdf':
+                    pages_data = self._pymupdf_extract_with_pages(str(pdf_path))
+                elif method_name == 'pdfplumber':
+                    pages_data = self._pdfplumber_extract_with_pages(str(pdf_path))
+                elif method_name == 'pypdf2':
+                    pages_data = self._pypdf2_extract_with_pages(str(pdf_path))
+                else:
+                    continue
+
+                # Validate extraction
+                combined_text = " ".join([text for text, _ in pages_data])
+                if self._validate_extraction(combined_text):
+                    logger.info(f"Successfully extracted {len(pages_data)} pages using {method_name}")
+                    return pages_data, method_name, metadata
+                else:
+                    logger.warning(f"{method_name} page extraction failed validation")
+
+            except Exception as e:
+                logger.warning(f"{method_name} page extraction failed: {str(e)}")
+                continue
+
+        # Fallback: Use regular extraction and assign all text to page 0
+        logger.warning("Page-aware extraction failed, using fallback with page 0")
+        text, method, metadata = self.extract_with_fallback(str(pdf_path))
+        return [(text, 0)], method, metadata
     
     def _pymupdf_extract(self, pdf_path: str) -> str:
         """Extract text using PyMuPDF (best for complex layouts)"""
         doc = fitz.open(pdf_path)
         text = ""
-        
+
         for page_num in range(doc.page_count):
             page = doc[page_num]
             text += page.get_text()
             text += "\n\n"  # Add page break
-            
+
         doc.close()
         return text.strip()
+
+    def _pymupdf_extract_with_pages(self, pdf_path: str) -> List[Tuple[str, int]]:
+        """Extract text with page numbers using PyMuPDF"""
+        doc = fitz.open(pdf_path)
+        pages_data = []
+
+        for page_num in range(doc.page_count):
+            page = doc[page_num]
+            page_text = page.get_text()
+
+            if page_text.strip():  # Only add if page has text
+                pages_data.append((page_text.strip(), page_num + 1))  # 1-indexed pages
+
+        doc.close()
+        return pages_data
     
     def _pdfplumber_extract(self, pdf_path: str) -> str:
         """Extract text using pdfplumber (good for tables)"""
         text = ""
-        
+
         with pdfplumber.open(pdf_path) as pdf:
             for page in pdf.pages:
                 page_text = page.extract_text()
                 if page_text:
                     text += page_text + "\n\n"
-                    
+
         return text.strip()
+
+    def _pdfplumber_extract_with_pages(self, pdf_path: str) -> List[Tuple[str, int]]:
+        """Extract text with page numbers using pdfplumber"""
+        pages_data = []
+
+        with pdfplumber.open(pdf_path) as pdf:
+            for page_num, page in enumerate(pdf.pages):
+                page_text = page.extract_text()
+
+                if page_text and page_text.strip():
+                    pages_data.append((page_text.strip(), page_num + 1))  # 1-indexed
+
+        return pages_data
     
     def _pypdf2_extract(self, pdf_path: str) -> str:
         """Extract text using PyPDF2 (fallback option)"""
         text = ""
-        
+
         with open(pdf_path, 'rb') as file:
             pdf_reader = PyPDF2.PdfReader(file)
-            
+
             for page in pdf_reader.pages:
                 page_text = page.extract_text()
                 if page_text:
                     text += page_text + "\n\n"
-                    
+
         return text.strip()
+
+    def _pypdf2_extract_with_pages(self, pdf_path: str) -> List[Tuple[str, int]]:
+        """Extract text with page numbers using PyPDF2"""
+        pages_data = []
+
+        with open(pdf_path, 'rb') as file:
+            pdf_reader = PyPDF2.PdfReader(file)
+
+            for page_num, page in enumerate(pdf_reader.pages):
+                page_text = page.extract_text()
+
+                if page_text and page_text.strip():
+                    pages_data.append((page_text.strip(), page_num + 1))  # 1-indexed
+
+        return pages_data
     
     def _ocr_extract(self, pdf_path: str) -> str:
         """Extract text using OCR for PDFs that can't be parsed correctly"""

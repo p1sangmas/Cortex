@@ -1,4 +1,4 @@
-/* Modern UI Stylesheet for DocuMind */
+/* Modern UI Stylesheet for Cortex */
 
 :root {
   /* Color Palette - Modern & Professional */
@@ -923,8 +923,299 @@ input[type="file"] {
   .modal {
     width: 95%;
   }
-  
+
   .message {
     max-width: 90%;
+  }
+}
+
+/* ==========================================================================
+   Agentic RAG Enhancements
+   ========================================================================== */
+
+/* RAG Mode Selector */
+.rag-mode-selector {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  padding: 0.5rem;
+  background: var(--card-bg);
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+}
+
+.mode-option {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: var(--sidebar-bg);
+  border: 2px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.mode-option:hover {
+  background: var(--hover-color);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.mode-option input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.mode-option input[type="radio"]:checked + .mode-icon {
+  color: var(--primary-color);
+}
+
+.mode-option input[type="radio"]:checked ~ .mode-text {
+  color: var(--primary-color);
+  font-weight: 600;
+}
+
+.mode-option input[type="radio"]:checked {
+  & ~ * {
+    color: var(--primary-color);
+  }
+}
+
+.mode-option:has(input:checked) {
+  border-color: var(--primary-color);
+  background: var(--hover-color);
+}
+
+.mode-icon {
+  font-size: 1.2rem;
+  color: var(--text-secondary);
+  transition: color 0.3s ease;
+}
+
+.mode-text {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-color);
+  transition: all 0.3s ease;
+}
+
+.mode-badge {
+  margin-left: auto;
+  padding: 0.25rem 0.5rem;
+  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+  color: white;
+  font-size: 0.7rem;
+  font-weight: bold;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Enhanced Citations */
+.enhanced-citation {
+  position: relative;
+  padding: 1rem;
+  margin-bottom: 0.75rem;
+  background: var(--card-bg);
+  border-left: 3px solid var(--primary-color);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.enhanced-citation:hover {
+  background: var(--hover-color);
+  transform: translateX(5px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.citation-badge {
+  display: inline-block;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--primary-color);
+  color: white;
+  text-align: center;
+  line-height: 28px;
+  font-weight: bold;
+  font-size: 0.85rem;
+  margin-right: 0.75rem;
+  flex-shrink: 0;
+}
+
+.citation-doc {
+  font-weight: 500;
+  color: var(--text-color);
+  margin-bottom: 0.25rem;
+  font-size: 0.95rem;
+}
+
+.citation-confidence {
+  float: right;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.citation-excerpt {
+  display: none;
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  background: var(--sidebar-bg);
+  border-radius: 4px;
+  font-style: italic;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  border-left: 2px solid var(--primary-color);
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition: all 0.3s ease;
+}
+
+.citation-excerpt.expanded {
+  display: block;
+  max-height: 500px;
+  opacity: 1;
+}
+
+.citation-excerpt::before {
+  content: '\f10d'; /* Font Awesome quote icon */
+  font-family: 'Font Awesome 6 Free';
+  font-weight: 900;
+  margin-right: 0.5rem;
+  color: var(--primary-color);
+  opacity: 0.5;
+}
+
+/* Reasoning Trace */
+.reasoning-list {
+  margin-top: 0.5rem;
+}
+
+.reasoning-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  margin-bottom: 0.5rem;
+  background: var(--card-bg);
+  border-left: 2px solid var(--secondary-color);
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.reasoning-step:hover {
+  background: var(--hover-color);
+  border-left-width: 3px;
+}
+
+.step-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--secondary-color);
+  color: white;
+  font-size: 0.8rem;
+  font-weight: bold;
+  flex-shrink: 0;
+}
+
+.reasoning-step strong {
+  color: var(--text-color);
+  font-size: 0.95rem;
+}
+
+.step-details {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-top: 0.25rem;
+  padding-left: 2rem;
+}
+
+/* Collapsible sections */
+.response-section.collapsible h4 {
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+  padding-right: 1.5rem;
+}
+
+.response-section.collapsible h4::after {
+  content: '\f078'; /* Font Awesome chevron down */
+  font-family: 'Font Awesome 6 Free';
+  font-weight: 900;
+  position: absolute;
+  right: 0;
+  transition: transform 0.3s ease;
+}
+
+.response-section.collapsible.expanded h4::after {
+  transform: rotate(180deg);
+}
+
+.response-section.collapsible .sources-list,
+.response-section.collapsible .reasoning-list {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+}
+
+.response-section.collapsible.expanded .sources-list,
+.response-section.collapsible.expanded .reasoning-list {
+  max-height: 2000px;
+}
+
+/* Mode indicator in chat header */
+.chat-header {
+  position: relative;
+}
+
+.chat-header::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+  opacity: 0.3;
+}
+
+/* Responsive adjustments for agentic features */
+@media (max-width: 768px) {
+  .rag-mode-selector {
+    flex-direction: column;
+  }
+
+  .mode-option {
+    width: 100%;
+  }
+
+  .enhanced-citation {
+    padding: 0.75rem;
+  }
+
+  .citation-badge {
+    width: 24px;
+    height: 24px;
+    line-height: 24px;
+    font-size: 0.75rem;
+  }
+
+  .reasoning-step {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .step-details {
+    padding-left: 0;
   }
 }

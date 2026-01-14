@@ -1,4 +1,4 @@
-# DocuMind: Comprehensive Documentation
+# Cortex: Comprehensive Documentation
 
 ## Table of Contents
 1. [Project Overview](#project-overview)
@@ -21,7 +21,7 @@
 
 ## Project Overview
 
-DocuMind is an AI-powered knowledge base assistant that allows users to upload PDF documents and ask natural language questions about their content. The system uses state-of-the-art language models and document retrieval techniques to provide accurate, contextual answers with source citations. DocuMind is designed to run entirely locally, ensuring privacy and data security.
+Cortex is an AI-powered knowledge base assistant that allows users to upload PDF documents and ask natural language questions about their content. The system uses state-of-the-art language models and document retrieval techniques to provide accurate, contextual answers with source citations. Cortex is designed to run entirely locally, ensuring privacy and data security.
 
 The system is built as a containerized application with Docker, making it easy to deploy across different operating systems and environments. It features two interfaces: a Streamlit-based UI and a more traditional HTML/CSS/JavaScript web interface.
 
@@ -40,9 +40,9 @@ The system is built as a containerized application with Docker, making it easy t
 
 ## System Architecture
 
-DocuMind follows a containerized architecture with two main components:
+Cortex follows a containerized architecture with two main components:
 
-1. **DocuMind Container**: Handles document processing, embedding generation, vector storage, and hosts both the API and web interface.
+1. **Cortex Container**: Handles document processing, embedding generation, vector storage, and hosts both the API and web interface.
 2. **Ollama Container**: Provides the LLM (Large Language Model) capabilities.
 
 The system uses a hybrid vector + keyword retrieval system to find relevant document chunks, which are then fed to the LLM to generate accurate responses.
@@ -83,7 +83,7 @@ The system uses a hybrid vector + keyword retrieval system to find relevant docu
 
 ### Docker Setup (Recommended)
 
-The easiest way to get started with DocuMind is through Docker. This approach works on any operating system and handles all dependencies.
+The easiest way to get started with Cortex is through Docker. This approach works on any operating system and handles all dependencies.
 
 #### Prerequisites
 
@@ -102,7 +102,7 @@ The easiest way to get started with DocuMind is through Docker. This approach wo
    ./run_docker.sh
    ```
 
-3. **Select option 1** from the menu to start DocuMind
+3. **Select option 1** from the menu to start Cortex
 
 4. **Access the interfaces**:
    - Web UI: http://localhost:8080
@@ -110,14 +110,14 @@ The easiest way to get started with DocuMind is through Docker. This approach wo
 
 #### GPU Support
 
-For systems with NVIDIA GPUs, DocuMind can leverage GPU acceleration:
+For systems with NVIDIA GPUs, Cortex can leverage GPU acceleration:
 
 1. The `run_docker.sh` script will automatically detect compatible NVIDIA GPUs
 2. Ensure you have the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html) installed
 
 ### Manual Setup
 
-If you prefer not to use Docker, you can set up DocuMind manually:
+If you prefer not to use Docker, you can set up Cortex manually:
 
 1. **Install Python dependencies**:
    ```bash
@@ -135,12 +135,12 @@ If you prefer not to use Docker, you can set up DocuMind manually:
 
 ### Adding Documents
 
-There are two ways to add documents to DocuMind:
+There are two ways to add documents to Cortex:
 
 #### Method 1: Auto-loading from Directory
 
 1. Place PDF files in the `data/documents` directory
-2. Start or restart DocuMind
+2. Start or restart Cortex
 3. The system will automatically detect and process new documents
 
 #### Method 2: Upload via Web Interface
@@ -166,7 +166,7 @@ Once you have documents loaded, you can ask questions in natural language:
 
 ### Understanding Responses
 
-DocuMind responses include:
+Cortex responses include:
 
 1. **Answer Text**: The main response to your query
 2. **Source Citations**: References to specific documents where information was found
@@ -211,7 +211,7 @@ For documents requiring OCR processing:
 
 ### Embedding Model Caching
 
-DocuMind pre-downloads and caches embedding models to improve startup and query time:
+Cortex pre-downloads and caches embedding models to improve startup and query time:
 
 - Models are stored in `./data/models_cache/`
 - ONNX optimized versions are kept in `./data/chroma_cache/onnx_models/`
@@ -256,7 +256,7 @@ Adjust Docker resource limits based on your system:
 
 **Solution**:
 - Verify containers are running: `docker compose ps`
-- Check logs: `docker compose logs documind`
+- Check logs: `docker compose logs cortex`
 - Ensure ports aren't in use by other applications
 
 ## Development Notes
@@ -264,7 +264,7 @@ Adjust Docker resource limits based on your system:
 ### Project Structure
 
 ```
-DocuMind/
+Cortex/
 ├── app.py                     # Main Streamlit application
 ├── api.py                     # Alternative web interface API
 ├── docker-entrypoint.sh       # Docker container startup script

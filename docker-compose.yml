@@ -1,12 +1,12 @@
 # filepath: /Users/fakhrulfauzi/Documents/Projects/DocuMind/docker-compose.yml
-# Docker Compose file for DocuMind
+# Docker Compose file for Cortex
 
 services:
-  documind:
+  cortex:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: documind
+    container_name: cortex
     ports:
       - "${WEB_UI_PORT:-8080}:80"   # Map container's port 80 (nginx/web) to host port (default 8080)
       - "${API_PORT:-8000}:8080"    # Map container's port 8080 (API) to host port (default 8000)
@@ -22,6 +22,7 @@ services:
       - DEBUG=${DEBUG:-false}
       - TZ=${TZ:-UTC}
       - DOCKER_ENV=true
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://127.0.0.1:80/ || curl -f http://127.0.0.1:8080/api/status"]
@@ -29,16 +30,24 @@ services:
       timeout: 5s
       retries: 3
       start_period: 15s
-    depends_on:
-      ollama:
-        condition: service_started
-        
-  ollama:
-    image: ollama/ollama:latest
-    container_name: ollama
-    volumes:
-      - ./ollama:/root/.ollama
-    ports:
-      - "${OLLAMA_PORT:-11434}:11434"
-    restart: unless-stopped
-    # GPU configuration is handled by docker-compose.gpu.yml overlay
+    # Using native Ollama on host instead of Docker container
+    # depends_on:
+    #   ollama:
+    #     condition: service_healthy
+
+  # Ollama service disabled - using native installation on host with Metal acceleration
+  # ollama:
+  #   image: ollama/ollama:latest
+  #   container_name: ollama
+  #   volumes:
+  #     - ./ollama:/root/.ollama
+  #   ports:
+  #     - "${OLLAMA_PORT:-11434}:11434"
+  #   restart: unless-stopped
+  #   healthcheck:
+  #     test: ["CMD", "ollama", "list"]
+  #     interval: 5s
+  #     timeout: 3s
+  #     retries: 10
+  #     start_period: 15s
+  #   # GPU configuration is handled by docker-compose.gpu.yml overlay

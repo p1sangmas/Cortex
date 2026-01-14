@@ -1,4 +1,4 @@
-"""Example configuration settings for DocuMind Knowledge Base Assistant
+"""Example configuration settings for Cortex Knowledge Base Assistant
 Copy this file to settings.py and adjust values as needed.
 """
 
@@ -34,7 +34,7 @@ OLLAMA_MODEL = "llama3:latest"  # Change to your preferred model
 OLLAMA_BASE_URL = "http://localhost:11434"  # Adjust if using different port/host
 
 # Streamlit configuration
-PAGE_TITLE = "DocuMind - AI Knowledge Assistant"
+PAGE_TITLE = "Cortex - AI Knowledge Assistant"
 PAGE_ICON = "🧠"
 
 # Vector store settings

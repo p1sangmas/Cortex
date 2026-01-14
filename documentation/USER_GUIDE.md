@@ -1,12 +1,12 @@
-# DocuMind User Guide
+# Cortex User Guide
 
 ## Introduction
 
-Welcome to DocuMind, an AI-powered document assistant that helps you extract insights from your PDF documents. This guide will walk you through setting up and using DocuMind, with no advanced technical knowledge required.
+Welcome to Cortex, an AI-powered document assistant that helps you extract insights from your PDF documents. This guide will walk you through setting up and using Cortex, with no advanced technical knowledge required.
 
-## What is DocuMind?
+## What is Cortex?
 
-DocuMind is a privacy-focused tool that allows you to:
+Cortex is a privacy-focused tool that allows you to:
 - Upload PDF documents
 - Ask questions about those documents in plain English
 - Get accurate answers with citations to the source documents
@@ -16,22 +16,22 @@ DocuMind is a privacy-focused tool that allows you to:
 
 ### Option 1: Using Docker (Recommended)
 
-Docker is a tool that makes it easy to run applications in isolated containers. This is the simplest way to get DocuMind running on any computer.
+Docker is a tool that makes it easy to run applications in isolated containers. This is the simplest way to get Cortex running on any computer.
 
 1. **Install Docker Desktop**
    - Download from [docker.com](https://www.docker.com/products/docker-desktop/)
    - Follow the installation instructions for your operating system
    - Start Docker Desktop after installation
 
-2. **Download DocuMind**
-   - Download the DocuMind project as a ZIP file or clone it using Git
+2. **Download Cortex**
+   - Download the Cortex project as a ZIP file or clone it using Git
    - Extract to a folder of your choice
 
 3. **Run the helper script**
-   - Open a terminal/command prompt in the DocuMind folder
+   - Open a terminal/command prompt in the Cortex folder
    - Run: `chmod +x run_docker.sh` (to make the script executable)
    - Run: `./run_docker.sh` (on macOS/Linux) or `bash run_docker.sh` (on Windows)
-   - Select option 1 from the menu to start DocuMind
+   - Select option 1 from the menu to start Cortex
 
 4. **Access the application**
    - Open your web browser
@@ -39,7 +39,7 @@ Docker is a tool that makes it easy to run applications in isolated containers. 
 
 ### Option 2: Manual Setup (For Python Users)
 
-If you're comfortable with Python, you can run DocuMind directly:
+If you're comfortable with Python, you can run Cortex directly:
 
 1. Install Python 3.9 or newer
 2. Install dependencies: `pip install -r requirements.txt`
@@ -48,7 +48,7 @@ If you're comfortable with Python, you can run DocuMind directly:
    - Windows: Download and install Tesseract and Poppler (see OCR_SETUP.md)
 4. Run: `python api.py` or `streamlit run app.py`
 
-## Using DocuMind
+## Using Cortex
 
 ### Step 1: Add Documents
 
@@ -61,9 +61,9 @@ There are two ways to add documents:
 4. Wait for the processing to complete (you'll see a success message)
 
 #### Method B: Add Files to the Documents Folder
-1. Navigate to the `data/documents` folder in your DocuMind installation
+1. Navigate to the `data/documents` folder in your Cortex installation
 2. Copy your PDF files into this folder
-3. Restart DocuMind or use the "Reload Documents" option in the interface
+3. Restart Cortex or use the "Reload Documents" option in the interface
 
 ### Step 2: Ask Questions
 
@@ -91,7 +91,7 @@ The system will return:
 
 ### 1. Document Preparation
 
-DocuMind can help you prepare for interviews by extracting key information:
+Cortex can help you prepare for interviews by extracting key information:
 
 - Upload job descriptions and candidate resumes
 - Ask questions like:
@@ -101,7 +101,7 @@ DocuMind can help you prepare for interviews by extracting key information:
 
 ### 2. Research and Analysis
 
-Use DocuMind to research companies or industries:
+Use Cortex to research companies or industries:
 
 - Upload company annual reports, press releases, or industry research
 - Ask questions like:
@@ -132,7 +132,7 @@ If you find the responses are taking too long:
 
 ### OCR Support
 
-DocuMind can process scanned documents or PDFs with embedded images:
+Cortex can process scanned documents or PDFs with embedded images:
 
 1. Ensure OCR dependencies are installed (see OCR_SETUP.md)
 2. Upload your document normally - the system will automatically use OCR when needed
@@ -163,7 +163,7 @@ If you encounter issues:
    - Look for error messages that may indicate what's wrong
 
 2. Restart the system:
-   - Run `./run_docker.sh` and select option 2 (Stop DocuMind)
+   - Run `./run_docker.sh` and select option 2 (Stop Cortex)
    - Then select option 1 to start it again
 
 3. Reset and rebuild (last resort):
@@ -172,7 +172,7 @@ If you encounter issues:
 
 ## Privacy and Data Security
 
-DocuMind processes all data locally on your computer:
+Cortex processes all data locally on your computer:
 - Your documents never leave your machine
 - No data is sent to external APIs or servers
 - The AI models run entirely on your local computer
@@ -181,7 +181,7 @@ This ensures complete confidentiality of your sensitive recruitment documents an
 
 ## Next Steps
 
-As you become more familiar with DocuMind, you might want to:
+As you become more familiar with Cortex, you might want to:
 
 - Explore the configuration options in `config/settings.py`
 - Try the Streamlit interface by running `streamlit run app.py`
@@ -195,4 +195,4 @@ As you become more familiar with DocuMind, you might want to:
 
 ---
 
-We hope you find DocuMind useful for your recruitment workflows! If you have questions or feedback, please reach out to the development team.
+We hope you find Cortex useful for your recruitment workflows! If you have questions or feedback, please reach out to the development team.

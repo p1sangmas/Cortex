@@ -1,0 +1,35 @@
+# docker-compose.n8n.yml
+# n8n automation service for Cortex
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.n8n.yml up -d
+
+services:
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: cortex-n8n
+    ports:
+      - "${N8N_PORT:-5678}:5678"
+    environment:
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=${N8N_USER:-admin}
+      - N8N_BASIC_AUTH_PASSWORD=${N8N_PASSWORD:-changeme123}
+      - WEBHOOK_URL=http://cortex-n8n:5678
+      - N8N_HOST=0.0.0.0
+      - N8N_PROTOCOL=http
+      - N8N_PORT=5678
+      - GENERIC_TIMEZONE=${TZ:-UTC}
+      # Telegram Bot Token (set in .env)
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      # Cortex API URL
+      - CORTEX_API_URL=http://cortex:8080
+    volumes:
+      - ./n8n-data:/home/node/.n8n
+      - ./n8n-workflows:/workflows:ro
+    networks:
+      - cortex_default
+    restart: unless-stopped
+    depends_on:
+      - cortex
+
+networks:
+  cortex_default:
+    external: true

@@ -2,7 +2,7 @@
 
 ## Ollama Connection Configuration
 
-DocuMind is designed to work seamlessly with Ollama whether you're running it through Docker or manually. The application automatically detects the environment and sets the appropriate connection URL:
+Cortex is designed to work seamlessly with Ollama whether you're running it through Docker or manually. The application automatically detects the environment and sets the appropriate connection URL:
 
 - **Docker Environment**: Uses `http://ollama:11434` (container service name)
 - **Manual/Local Environment**: Uses `http://localhost:11434`
@@ -31,7 +31,7 @@ If you need to override this behavior or connect to an Ollama instance running o
 
 ## Other Environment Variables
 
-DocuMind uses several environment variables to control its behavior:
+Cortex uses several environment variables to control its behavior:
 
 | Variable | Description | Default |
 |----------|-------------|---------|

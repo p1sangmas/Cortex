@@ -2,7 +2,7 @@
 
 import re
 import logging
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 import numpy as np
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
@@ -49,7 +49,129 @@ class SemanticChunker:
         
         logger.info(f"Created {len(final_chunks)} semantic chunks")
         return final_chunks
-    
+
+    def chunk_with_page_tracking(
+        self,
+        pages_data: List[Tuple[str, int]]
+    ) -> List[Dict[str, any]]:
+        """
+        Chunk text while preserving page numbers
+
+        Args:
+            pages_data: List of (page_text, page_number) tuples
+
+        Returns:
+            List of chunk dictionaries with content, page_number, and metadata
+        """
+        logger.info(f"Starting page-aware chunking for {len(pages_data)} pages")
+
+        chunks_with_pages = []
+
+        for page_text, page_num in pages_data:
+            if not page_text.strip():
+                continue
+
+            # Chunk the page text
+            page_chunks = self.chunk_by_semantic_similarity(page_text)
+
+            # Add page number to each chunk
+            for chunk_idx, chunk in enumerate(page_chunks):
+                chunks_with_pages.append({
+                    'content': chunk,
+                    'page_number': page_num,
+                    'metadata': {
+                        'page': page_num,  # Duplicate for compatibility
+                        'chunk_index_in_page': chunk_idx,
+                        'chunk_length': len(chunk),
+                        'word_count': len(chunk.split())
+                    }
+                })
+
+        logger.info(f"Created {len(chunks_with_pages)} chunks with page tracking")
+        return chunks_with_pages
+
+    def chunk_with_cross_page_semantics(
+        self,
+        pages_data: List[Tuple[str, int]]
+    ) -> List[Dict[str, any]]:
+        """
+        Advanced chunking that can span multiple pages based on semantic similarity
+
+        Args:
+            pages_data: List of (page_text, page_number) tuples
+
+        Returns:
+            List of chunk dictionaries with content, primary page_number, and page spans
+        """
+        logger.info(f"Starting cross-page semantic chunking for {len(pages_data)} pages")
+
+        # Combine all text but track page boundaries
+        full_text = ""
+        page_boundaries = []  # List of (char_start, char_end, page_num)
+        current_pos = 0
+
+        for page_text, page_num in pages_data:
+            if not page_text.strip():
+                continue
+
+            start_pos = current_pos
+            end_pos = current_pos + len(page_text)
+            page_boundaries.append((start_pos, end_pos, page_num))
+
+            full_text += page_text + "\n\n"
+            current_pos = len(full_text)
+
+        if not full_text.strip():
+            return []
+
+        # Chunk the combined text
+        chunks = self.chunk_by_semantic_similarity(full_text)
+
+        # Determine page number for each chunk
+        chunks_with_pages = []
+        char_offset = 0
+
+        for chunk_idx, chunk in enumerate(chunks):
+            chunk_start = full_text.find(chunk, char_offset)
+            chunk_end = chunk_start + len(chunk)
+
+            # Find which pages this chunk spans
+            chunk_pages = []
+            for start, end, page_num in page_boundaries:
+                # Check if chunk overlaps with this page
+                if not (chunk_end < start or chunk_start > end):
+                    # Calculate overlap
+                    overlap_start = max(chunk_start, start)
+                    overlap_end = min(chunk_end, end)
+                    overlap_length = overlap_end - overlap_start
+                    chunk_pages.append((page_num, overlap_length))
+
+            # Primary page is the one with most content
+            if chunk_pages:
+                primary_page = max(chunk_pages, key=lambda x: x[1])[0]
+                page_span = [p for p, _ in chunk_pages]
+            else:
+                primary_page = 1  # Default fallback
+                page_span = [1]
+
+            chunks_with_pages.append({
+                'content': chunk,
+                'page_number': primary_page,
+                'metadata': {
+                    'page': primary_page,
+                    'page_span': page_span,  # All pages this chunk touches
+                    'chunk_index': chunk_idx,
+                    'chunk_length': len(chunk),
+                    'word_count': len(chunk.split()),
+                    'cross_page': len(page_span) > 1
+                }
+            })
+
+            char_offset = chunk_end
+
+        logger.info(f"Created {len(chunks_with_pages)} chunks with cross-page tracking")
+        return chunks_with_pages
+
     def _split_into_sentences(self, text: str) -> List[str]:
         """Split text into sentences with improved handling"""
         # Clean text

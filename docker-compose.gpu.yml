@@ -1,4 +1,4 @@
-# filepath: /Users/fakhrulfauzi/Documents/Projects/DocuMind/docker-compose.gpu.yml
+# filepath: /Users/fakhrulfauzi/Documents/Projects/Cortex/docker-compose.gpu.yml
 # This file is an override for docker-compose.yml to enable GPU support
 # To use: docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
 

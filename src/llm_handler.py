@@ -46,7 +46,7 @@ class OllamaHandler:
             response = requests.post(
                 self.generate_url,
                 json=payload,
-                timeout=180  # Increased timeout to 3 minutes
+                timeout=240  # Increased timeout to 4 minutes for slower hardware
             )
             
             if response.status_code == 200:
@@ -80,7 +80,7 @@ class PromptTemplateManager:
     
     def _build_qa_template(self) -> str:
         """Build the main Q&A template"""
-        return """You are DocuMind, an expert AI assistant specializing in organizational knowledge retrieval and analysis. You help users find and understand information from their internal documents.
+        return """You are Cortex, an expert AI assistant specializing in organizational knowledge retrieval and analysis. You help users find and understand information from their internal documents.
 
 CONTEXT INFORMATION:
 {context}
@@ -112,7 +112,7 @@ Answer:"""
 
     def _build_summarization_template(self) -> str:
         """Build template for document summarization"""
-        return """You are DocuMind, tasked with creating comprehensive summaries of organizational documents.
+        return """You are Cortex, tasked with creating comprehensive summaries of organizational documents.
 
 DOCUMENT CONTENT:
 {context}
@@ -130,7 +130,7 @@ Provide a well-structured summary:"""
 
     def _build_comparison_template(self) -> str:
         """Build template for comparing information across documents"""
-        return """You are DocuMind, analyzing and comparing information across multiple organizational documents.
+        return """You are Cortex, analyzing and comparing information across multiple organizational documents.
 
 DOCUMENTS TO COMPARE:
 {context}
@@ -148,7 +148,7 @@ Provide a structured comparison:"""
 
     def _build_extraction_template(self) -> str:
         """Build template for extracting specific information"""
-        return """You are DocuMind, extracting specific information from organizational documents.
+        return """You are Cortex, extracting specific information from organizational documents.
 
 DOCUMENT CONTENT:
 {context}
@@ -227,8 +227,8 @@ class AdaptiveQAChain:
             chat_history=formatted_history
         )
         
-        # Generate response
-        response = self.ollama.generate(prompt, max_tokens=1500, temperature=0.1)
+        # Generate response (increased tokens for comprehensive answers with native Ollama)
+        response = self.ollama.generate(prompt, max_tokens=1000, temperature=0.1)
         
         if not response:
             return {
@@ -261,7 +261,7 @@ class AdaptiveQAChain:
             question=query
         )
         
-        response = self.ollama.generate(prompt, max_tokens=2000, temperature=0.2)
+        response = self.ollama.generate(prompt, max_tokens=1000, temperature=0.2)
         
         sources = self._extract_sources(context_documents)
         
@@ -281,8 +281,8 @@ class AdaptiveQAChain:
             context=context,
             question=query
         )
-        
-        response = self.ollama.generate(prompt, max_tokens=2000, temperature=0.1)
+
+        response = self.ollama.generate(prompt, max_tokens=1000, temperature=0.1)
         
         sources = self._extract_sources(context_documents)
         
@@ -302,8 +302,8 @@ class AdaptiveQAChain:
             context=context,
             question=query
         )
-        
-        response = self.ollama.generate(prompt, max_tokens=1500, temperature=0.1)
+
+        response = self.ollama.generate(prompt, max_tokens=1000, temperature=0.1)
         
         sources = self._extract_sources(context_documents)
         

@@ -1,4 +1,4 @@
-"""Utility functions for the DocuMind Knowledge Base Assistant"""
+"""Utility functions for the Cortex Knowledge Base Assistant"""
 
 import logging
 import os

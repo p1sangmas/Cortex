@@ -26,7 +26,7 @@ function initNotificationPanel() {
     });
     
     // Welcome notification
-    addNotification('Welcome to DocuMind! Upload PDF documents to get started.', 'info');
+    addNotification('Welcome to Cortex! Upload PDF documents to get started.', 'info');
     
     // Initially populate with any existing notifications
     updateNotificationPanel();

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Entrypoint script for DocuMind Docker container
+# Entrypoint script for Cortex Docker container
 
 # Function to check and create necessary directories
 setup_directories() {
@@ -160,5 +160,5 @@ echo "- HOST: $HOST"
 echo "- PORT: $PORT"
 
 # Start the API server
-echo "Starting DocuMind API server..."
+echo "Starting Cortex API server..."
 python api.py
