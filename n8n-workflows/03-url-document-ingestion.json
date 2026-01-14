@@ -1,5 +1,4 @@
 {
-  "name": "URL Document Ingestion",
   "nodes": [
     {
       "parameters": {
@@ -8,11 +7,14 @@
         "responseMode": "responseNode",
         "options": {}
       },
-      "id": "webhook-trigger",
+      "id": "72d12a67-56da-4146-9ee0-a4e1f9a33bd7",
       "name": "Webhook Trigger",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 1.1,
-      "position": [240, 300],
+      "position": [
+        1616,
+        80
+      ],
       "webhookId": "url-ingest-webhook"
     },
     {
@@ -27,21 +29,27 @@
           "timeout": 30000
         }
       },
-      "id": "download-file",
+      "id": "b425308d-317b-4303-8645-a0c8bee3438f",
       "name": "Download File from URL",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [460, 300]
+      "position": [
+        1840,
+        80
+      ]
     },
     {
       "parameters": {
         "jsCode": "// Extract filename from URL or use provided filename\nconst webhookData = $('Webhook Trigger').item.json.body;\nconst url = webhookData.url;\nconst providedFilename = webhookData.filename;\n\nlet filename;\nif (providedFilename) {\n  filename = providedFilename;\n} else {\n  // Extract from URL\n  const urlParts = url.split('/');\n  filename = urlParts[urlParts.length - 1].split('?')[0];\n  \n  // If no extension, add .pdf\n  if (!filename.includes('.')) {\n    filename = filename + '.pdf';\n  }\n}\n\n// Ensure it's a PDF\nif (!filename.toLowerCase().endsWith('.pdf')) {\n  filename = filename + '.pdf';\n}\n\n// IMPORTANT: Preserve binary data from previous node\nconst binaryData = $input.item.binary || {};\n\n// Set the filename in binary data if it exists\nif (binaryData.data) {\n  binaryData.data.fileName = filename;\n}\n\n// Return item with BOTH json and binary data\nreturn {\n  json: {\n    filename: filename,\n    url: url\n  },\n  binary: binaryData\n};"
       },
-      "id": "prepare-metadata",
+      "id": "abcf115f-befa-4b3f-942d-7cf25b795d69",
       "name": "Prepare Metadata",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [680, 300]
+      "position": [
+        2064,
+        80
+      ]
     },
     {
       "parameters": {
@@ -52,8 +60,8 @@
         "bodyParameters": {
           "parameters": [
             {
-              "name": "file",
               "parameterType": "formBinaryData",
+              "name": "file",
               "inputDataFieldName": "data"
             }
           ]
@@ -62,53 +70,70 @@
           "timeout": 60000
         }
       },
-      "id": "upload-to-cortex",
+      "id": "b050725e-4ea2-495c-8533-2dba1b149d04",
       "name": "Upload to Cortex",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [900, 300]
+      "position": [
+        2288,
+        80
+      ]
     },
     {
       "parameters": {
         "jsCode": "// Format success response\nconst response = $input.item.json;\nconst metadata = $('Prepare Metadata').item.json;\n\nif (response.success) {\n  return {\n    success: true,\n    message: 'Document ingested successfully',\n    filename: metadata.filename,\n    url: metadata.url,\n    file_info: response.file_info,\n    ingestion_source: 'url',\n    timestamp: new Date().toISOString()\n  };\n} else {\n  return {\n    success: false,\n    message: 'Document ingestion failed',\n    error: response.error || 'Unknown error',\n    filename: metadata.filename,\n    url: metadata.url\n  };\n}"
       },
-      "id": "format-response",
+      "id": "d5957b4d-a734-4878-ae21-9ae8f6fafd92",
       "name": "Format Response",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1120, 300]
+      "position": [
+        2496,
+        80
+      ]
     },
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ $json }}"
+        "responseBody": "={{ $json }}",
+        "options": {}
       },
-      "id": "respond-webhook",
+      "id": "95475e5b-3613-46f0-8e42-42987eb4bbcf",
       "name": "Respond to Webhook",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [1340, 300]
+      "position": [
+        2720,
+        80
+      ]
     },
     {
       "parameters": {
         "jsCode": "// Handle download errors\nconst error = $input.item.error;\nconst url = $('Webhook Trigger').item.json.body.url;\n\nreturn {\n  success: false,\n  message: 'Failed to download file from URL',\n  error: error ? error.message : 'Download failed',\n  url: url,\n  timestamp: new Date().toISOString()\n};"
       },
-      "id": "handle-download-error",
+      "id": "7b06fbf9-3fe8-4cee-9e76-7758316e28e3",
       "name": "Handle Download Error",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [680, 480]
+      "position": [
+        2064,
+        272
+      ]
     },
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ $json }}"
+        "responseBody": "={{ $json }}",
+        "options": {}
       },
-      "id": "respond-error",
+      "id": "f87040fd-520a-4760-bfd1-3e2195efa846",
       "name": "Respond Error",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [900, 480]
+      "position": [
+        2288,
+        272
+      ]
     }
   ],
   "connections": {
@@ -128,13 +153,6 @@
         [
           {
             "node": "Prepare Metadata",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Handle Download Error",
             "type": "main",
             "index": 0
           }
@@ -187,12 +205,7 @@
     }
   },
   "pinData": {},
-  "settings": {
-    "executionOrder": "v1"
-  },
-  "staticData": null,
-  "tags": [],
-  "triggerCount": 0,
-  "updatedAt": "2026-01-13T00:00:00.000Z",
-  "versionId": "1"
+  "meta": {
+    "instanceId": "9e59b40a7389101be7ffb2c3b0d63331d2bd85aa21ef87fed65d3cd2c7d93812"
+  }
 }

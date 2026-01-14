@@ -154,7 +154,15 @@ class URLIngestionTool(BaseTool):
                 )
 
             # Parse response
-            data = response.json()
+            try:
+                data = response.json()
+            except ValueError as json_error:
+                logger.error(f"Invalid JSON response from n8n: {response.text[:200]}")
+                return ToolResult(
+                    success=False,
+                    error=f"Document ingestion service returned an invalid response. The n8n workflow may not be configured correctly. Please ensure the URL ingestion workflow is imported and activated in n8n.",
+                    metadata={'tool': self.name, 'url': url, 'response_preview': response.text[:200]}
+                )
 
             if not data.get('success'):
                 error_msg = data.get('error', 'Unknown error during ingestion')

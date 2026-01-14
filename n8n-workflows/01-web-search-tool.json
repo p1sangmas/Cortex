@@ -15,7 +15,7 @@
         0,
         0
       ],
-      "webhookId": "documind-websearch"
+      "webhookId": "cortex-websearch"
     },
     {
       "parameters": {
@@ -99,7 +99,7 @@
     "Webhook": [
       {
         "headers": {
-          "host": "documind-n8n:5678",
+          "host": "cortex-n8n:5678",
           "user-agent": "python-requests/2.32.5",
           "accept-encoding": "gzip, deflate, zstd",
           "accept": "*/*",
@@ -113,7 +113,7 @@
           "query": "what is the capital of Malaysia?",
           "max_results": 5
         },
-        "webhookUrl": "http://documind-n8n:5678/webhook/web-search",
+        "webhookUrl": "http://cortex-n8n:5678/webhook/web-search",
         "executionMode": "production"
       }
     ]

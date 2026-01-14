@@ -1,5 +1,6 @@
 # filepath: /Users/fakhrulfauzi/Documents/Projects/DocuMind/docker-compose.yml
 # Docker Compose file for Cortex
+name: cortex
 
 services:
   cortex:
@@ -24,6 +25,8 @@ services:
       - DOCKER_ENV=true
       - OLLAMA_BASE_URL=http://host.docker.internal:11434
     restart: unless-stopped
+    networks:
+      - cortex_default
     healthcheck:
       test: ["CMD", "curl", "-f", "http://127.0.0.1:80/ || curl -f http://127.0.0.1:8080/api/status"]
       interval: 30s
@@ -51,3 +54,8 @@ services:
   #     retries: 10
   #     start_period: 15s
   #   # GPU configuration is handled by docker-compose.gpu.yml overlay
+
+networks:
+  cortex_default:
+    name: cortex_default
+    driver: bridge

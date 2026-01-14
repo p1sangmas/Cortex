@@ -445,7 +445,7 @@ input[type="file"] {
   gap: 1rem;
   padding-right: 0.5rem;
   padding-bottom: 1rem;
-  max-height: 65vh;
+  min-height: 0; /* Fix for flex container scroll */
   scrollbar-width: thin;
 }
 
@@ -902,9 +902,9 @@ input[type="file"] {
   .sidebar-section {
     padding: 1rem;
   }
-  
+
   #chat-messages {
-    max-height: 50vh;
+    min-height: 0; /* Fix for flex container scroll */
   }
 }
 
