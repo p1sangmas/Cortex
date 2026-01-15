@@ -6,6 +6,7 @@ conceptual/thematic queries.
 """
 
 import logging
+import math
 from typing import Dict, Any
 from src.tools import BaseTool, ToolResult, EnhancedCitation
 
@@ -124,12 +125,30 @@ class SemanticSearchTool(BaseTool):
                     result.get('id', f'document_{idx}')
                 )
 
+                # Get raw similarity score and normalize from [-1, 1] to [0, 1]
+                raw_similarity = result.get('semantic_score', 0.0)
+                normalized_similarity = (raw_similarity + 1) / 2 if raw_similarity < 1 else raw_similarity
+
+                # Get cross-encoder score and normalize using sigmoid
+                # Cross-encoder outputs raw logits (can be very negative/positive)
+                # Apply sigmoid to normalize to [0, 1]: sigmoid(x) = 1 / (1 + e^-x)
+                raw_cross_score = result.get('cross_score', 0.0)
+                if raw_cross_score != 0.0:
+                    try:
+                        cross_score = 1 / (1 + math.exp(-raw_cross_score))
+                    except OverflowError:
+                        # Handle extreme values
+                        cross_score = 0.0 if raw_cross_score < 0 else 1.0
+                else:
+                    cross_score = 0.0
+
                 # Create citation
                 citation = EnhancedCitation(
                     document=doc_name,
                     page_number=metadata.get('page_number', metadata.get('page', 0)),
                     content=result.get('content', ''),
-                    similarity_score=result.get('semantic_score', 0.0),
+                    similarity_score=normalized_similarity,  # Use normalized score
+                    cross_encoder_score=cross_score,  # Add cross-encoder score
                     rank_position=idx + 1,
                     metadata=metadata
                 )
@@ -148,8 +167,10 @@ class SemanticSearchTool(BaseTool):
                     logger.info(f"Confidence from cross-encoder scores: {confidence:.3f} (scores: {[f'{s:.3f}' for s in top_scores]})")
                 else:
                     # Fallback to similarity scores if cross-encoder not available
+                    # Similarity scores are already normalized in citation creation
                     top_sim_scores = [c.similarity_score for c in citations[:3]]
                     if top_sim_scores:
+                        # Scores are already in [0, 1] range, just average them
                         confidence = sum(top_sim_scores) / len(top_sim_scores)
                         logger.info(f"Confidence from similarity scores: {confidence:.3f} (scores: {[f'{s:.3f}' for s in top_sim_scores]})")
 

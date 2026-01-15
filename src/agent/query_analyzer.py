@@ -167,18 +167,24 @@ class QueryAnalyzer:
         """
         prompt = f"""Classify this query's intent. Choose EXACTLY ONE option:
 
-- factual: Questions about internal documents, policies, company information, or anything that would be in uploaded PDFs
-- external: General knowledge, current events, real-time data, geography, history, definitions, or information unlikely to be in internal documents
-- comparison: Comparing two or more things
-- summarization: Asking for a summary or overview
+- factual: Questions about uploaded documents, files, PDFs, or content that the user has provided. Includes queries with "the document", "the file", "this document", "uploaded", or asking about specific documents/policies/reports.
+- external: General knowledge, current events, real-time data, famous people, geography, history, scientific facts, definitions, or information from the internet/Wikipedia that is NOT in user's uploaded documents.
+- comparison: Comparing two or more things (only if explicitly asking to compare)
+- summarization: Asking for a summary or overview (only if explicitly asking to summarize)
 - calculation: Math operations or numerical calculations
+
+IMPORTANT: If the query asks about "the document", "the file", "uploaded documents", or specific documents/policies/reports, it is ALWAYS factual (not external).
 
 Examples:
 - "What is our remote work policy?" → factual (internal document)
-- "What is the capital of France?" → external (general knowledge)
-- "What is machine learning?" → external (general knowledge)
+- "What is the document about?" → factual (asking about uploaded document)
+- "What are the documents about?" → factual (asking about uploaded documents)
+- "Summarize the uploaded file" → summarization (uploaded document)
+- "What is port in rebate offer?" → factual (could be in uploaded document)
+- "What is the capital of France?" → external (general knowledge, geography)
+- "Who is the current Prime Minister of Malaysia?" → external (current events, political figure)
+- "What is machine learning?" → external (general knowledge, definition)
 - "Compare Policy A and Policy B" → comparison
-- "Summarize the Q4 report" → summarization
 - "Calculate 15% of the budget" → calculation
 
 Query: "{query}"

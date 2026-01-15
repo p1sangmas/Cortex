@@ -268,7 +268,10 @@ function addMessage(text, role, metadata = null, isError = false) {
                 traceDiv.open = false;
                 // traceDiv.style.marginTop removed in favor of CSS class
 
-                const stepsHtml = metadata.reasoning_trace.map((step) => {
+                // Filter out skip_tool steps
+                const filteredTrace = metadata.reasoning_trace.filter(step => step.step !== 'skip_tool');
+
+                const stepsHtml = filteredTrace.map((step) => {
                     let icon = 'fa-search';
                     let label = '';
                     let description = '';

@@ -58,47 +58,60 @@ class WebSearchTool(BaseTool):
         """
         query_lower = query.lower()
 
+        # IMPORTANT: If query explicitly asks about documents/files, don't use web search
+        document_indicators = [
+            'the document', 'the file', 'the pdf', 'uploaded', 'this document',
+            'these documents', 'my document', 'my file', 'the report', 'the policy'
+        ]
+
+        if any(indicator in query_lower for indicator in document_indicators):
+            return 0.0  # Never use web search for explicit document queries
+
         # Check if internal results have low confidence
         internal_confidence = context.get('internal_confidence', 1.0)
         internal_results = context.get('internal_results_count', 1)
 
-        # Very high confidence if no internal results
-        if internal_results == 0:
-            return 0.85
-
-        # High confidence if internal results have low confidence
-        if internal_confidence < 0.5:
-            return 0.8
-
-        # Keywords suggesting external/current information needed
-        external_keywords = [
-            'current', 'latest', 'recent', 'today', 'now',
-            'this year', '2024', '2025', '2026',
-            'news', 'update', 'breaking',
-            'what is the current', 'as of'
+        # Keywords strongly suggesting external/current information needed
+        # These are clear signals that we need web search
+        strong_external_keywords = [
+            'current', 'latest', 'recent', 'today', 'now', 'this week',
+            'this month', 'this year', '2024', '2025', '2026',
+            'news', 'breaking', 'update', 'as of now',
+            'what is the current', 'who is the current',
+            'latest update', 'recent news'
         ]
 
-        for keyword in external_keywords:
+        for keyword in strong_external_keywords:
             if keyword in query_lower:
-                return 0.75
+                return 0.75  # High confidence for explicit temporal queries
 
-        # Questions about entities not likely in internal docs
+        # Questions about entities/facts not likely in internal docs
         external_entities = [
             'weather', 'stock price', 'exchange rate',
-            'population', 'distance', 'time zone',
-            'wikipedia', 'google', 'website'
+            'population of', 'capital of', 'president of', 'prime minister of',
+            'time zone', 'distance between', 'location of',
+            'wikipedia', 'google search', 'look up'
         ]
 
         for entity in external_entities:
             if entity in query_lower:
-                return 0.7
+                return 0.7  # Medium-high confidence for external entities
 
-        # Medium confidence if internal results are moderate
-        if internal_confidence < 0.7:
-            return 0.5
+        # Only use web search as fallback if internal results are truly poor
+        # Normalized confidence should be in [0, 1] range after fix
+        if internal_confidence > 0:  # Have valid confidence score
+            if internal_confidence < 0.3:  # Very low confidence
+                return 0.4  # Medium-low confidence for web search
+            elif internal_confidence < 0.5:  # Low confidence
+                return 0.3  # Low confidence for web search
 
-        # Low confidence - internal results should be sufficient
-        return 0.3
+        # If no internal results at all, use web search as last resort
+        if internal_results == 0:
+            return 0.5  # Medium confidence only if truly no results
+
+        # Default: Don't use web search for most queries
+        # Let internal search handle it first
+        return 0.1  # Very low confidence - internal search should handle it
 
     def execute(self, query: str, context: Dict[str, Any]) -> ToolResult:
         """

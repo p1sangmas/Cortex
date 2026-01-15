@@ -19,13 +19,31 @@
     },
     {
       "parameters": {
-        "url": "=https://api.duckduckgo.com/?q={{ encodeURIComponent($('Webhook').item.json.body.query) }}&format=json&pretty=1",
+        "method": "POST",
+        "url": "https://google.serper.dev/search",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-KEY",
+              "value": "-your-api-key-here-"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"q\": \"{{ $('Webhook').item.json.body.query }}\",\n  \"num\": {{ $('Webhook').item.json.body.max_results || 5 }}\n}",
         "options": {}
       },
       "id": "6f9d147e-50fa-42e3-bfc6-c1d8b70714e2",
-      "name": "DuckDuckGo Search",
+      "name": "Serper.dev Search",
       "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 3,
+      "typeVersion": 4.2,
       "position": [
         208,
         0
@@ -33,7 +51,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Simple version: Return abstract for RAG with helpful error messages\nconst query = $('Webhook').item.json.body.query || '';\n\n// Parse response\nlet responseData = items[0].json;\nlet searchData;\n\ntry {\n  searchData = typeof responseData.data === 'string' \n    ? JSON.parse(responseData.data) \n    : responseData.data || responseData;\n} catch (e) {\n  searchData = {};\n}\n\nconst results = [];\n\n// Always use AbstractText if available (best for RAG)\nif (searchData.AbstractText) {\n  results.push({\n    title: searchData.Heading || 'Wikipedia',\n    snippet: searchData.AbstractText,\n    url: searchData.AbstractURL || '',\n    source: 'Wikipedia',\n    rank: 1\n  });\n  \n  // Optional: Add capital from Infobox if query asks about capital\n  if (query.toLowerCase().includes('capital') && searchData.Infobox && searchData.Infobox.content) {\n    const capitalInfo = searchData.Infobox.content.find(item => item.label === 'Capital');\n    if (capitalInfo) {\n      results[0].snippet += `\\n\\nThe capital of ${searchData.Heading || 'this country'} is ${capitalInfo.value}.`;\n    }\n  }\n} else {\n  // Fallback to other content\n  if (searchData.Results && Array.isArray(searchData.Results) && searchData.Results.length > 0) {\n    searchData.Results.slice(0, 2).forEach((result, idx) => {\n      if (result.Text && result.FirstURL) {\n        const cleanText = result.Text.replace(/<[^>]*>/g, '');\n        results.push({\n          title: cleanText,\n          snippet: cleanText,\n          url: result.FirstURL,\n          source: 'DuckDuckGo',\n          rank: idx + 1\n        });\n      }\n    });\n  }\n}\n\n// Add helpful message when no results found\nlet helpMessage = null;\nif (results.length === 0) {\n  helpMessage = 'The web search API (DuckDuckGo Instant Answer) could not find results for this query. ' +\n                'This API works best for well-known topics with Wikipedia entries. ' +\n                'Try rephrasing your question to be more specific (e.g., \"Python programming language\" instead of \"what is python?\").';\n}\n\nreturn [{\n  json: {\n    query: query,\n    source: 'duckduckgo',\n    results: results,\n    count: results.length,\n    success: results.length > 0,\n    help_message: helpMessage\n  }\n}];"
+        "jsCode": "// Parse Serper.dev response for RAG\nconst query = $('Webhook').item.json.body.query || '';\nconst maxResults = $('Webhook').item.json.body.max_results || 5;\n\n// Parse response\nlet responseData = items[0].json;\nlet searchData;\n\ntry {\n  searchData = typeof responseData === 'string' \n    ? JSON.parse(responseData) \n    : responseData;\n} catch (e) {\n  searchData = {};\n}\n\nconst results = [];\n\n// Priority 1: Answer Box (direct answer from Google)\nif (searchData.answerBox) {\n  const box = searchData.answerBox;\n  results.push({\n    title: box.title || 'Answer',\n    snippet: box.answer || box.snippet || '',\n    url: box.link || '',\n    source: 'Google Answer Box',\n    rank: 1,\n    type: 'answer'\n  });\n}\n\n// Priority 2: Knowledge Graph (for entities)\nif (searchData.knowledgeGraph && searchData.knowledgeGraph.description) {\n  results.push({\n    title: searchData.knowledgeGraph.title || 'Knowledge Graph',\n    snippet: searchData.knowledgeGraph.description,\n    url: searchData.knowledgeGraph.descriptionLink || searchData.knowledgeGraph.website || '',\n    source: 'Google Knowledge Graph',\n    rank: results.length + 1,\n    type: 'knowledge'\n  });\n}\n\n// Priority 3: Organic search results\nif (searchData.organic && Array.isArray(searchData.organic)) {\n  searchData.organic.slice(0, maxResults).forEach((result, idx) => {\n    if (result.snippet && result.link) {\n      results.push({\n        title: result.title || 'Search Result',\n        snippet: result.snippet,\n        url: result.link,\n        source: 'Google Search',\n        rank: results.length + 1,\n        type: 'organic',\n        position: result.position || idx + 1\n      });\n    }\n  });\n}\n\n// Add helpful message when no results found\nlet helpMessage = null;\nif (results.length === 0) {\n  helpMessage = 'The web search API (Serper.dev) could not find results for this query. ' +\n                'Please try rephrasing your question or check if the API key is valid.';\n}\n\nreturn [{\n  json: {\n    query: query,\n    source: 'serper.dev',\n    provider: 'Google (via Serper.dev)',\n    results: results,\n    count: results.length,\n    success: results.length > 0,\n    help_message: helpMessage,\n    raw_response: searchData  // For debugging\n  }\n}];"
       },
       "id": "79401cf9-1201-467a-8faf-43afcce61f6a",
       "name": "Parse Results",
@@ -65,14 +83,14 @@
       "main": [
         [
           {
-            "node": "DuckDuckGo Search",
+            "node": "Serper.dev Search",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "DuckDuckGo Search": {
+    "Serper.dev Search": {
       "main": [
         [
           {

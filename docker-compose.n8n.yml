@@ -21,6 +21,8 @@ services:
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
       # Cortex API URL
       - CORTEX_API_URL=http://cortex:8080
+      # Serper.dev API Key (for web search tool)
+      - SERPER_API_KEY=${SERPER_API_KEY:-}
     volumes:
       - ./n8n-data:/home/node/.n8n
       - ./n8n-workflows:/workflows:ro
