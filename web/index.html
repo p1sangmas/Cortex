@@ -114,6 +114,13 @@
                 <p>Embedding Model: <span id="embed-model">default</span></p>
                 <!-- RAG Mode moved to top bar -->
                 <p>Ollama Status: <span id="ollama-status">Checking...</span></p>
+                <div class="theme-toggle-container" style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem;">
+                    <span style="color: var(--text-primary);">Dark Theme</span>
+                    <label class="theme-switch">
+                        <input type="checkbox" id="theme-toggle">
+                        <span class="slider round"></span>
+                    </label>
+                </div>
                 <hr style="border-color: var(--border-color); margin: 1rem 0;">
                 <button class="new-chat-btn" id="clear-kb-btn"
                     style="width: 100%; justify-content: center; color: var(--danger-color); border-color: var(--danger-color);">

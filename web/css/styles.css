@@ -1,18 +1,14 @@
 :root {
     /* Color Variables */
     --bg-dark: #212121;
-    /* Darker background from image */
     --bg-sidebar: #171717;
-    /* Darker sidebar */
     --bg-input: #303030;
-    /* Lighter input */
     --bg-dropdown: #2F2F2F;
     --text-primary: #ECECF1;
     --text-secondary: #B4B4B4;
     --border-color: #424242;
     --hover-color: #2F2F2F;
     --user-msg-bg: #212121;
-    /* Blend with bg */
     --ai-msg-bg: #212121;
     --primary-color: #10a37f;
     --primary-hover: #1a7f64;
@@ -20,6 +16,16 @@
 
     /* Spacing */
     --sidebar-width: 260px;
+
+    /* Glow Colors (Dark Mode) */
+    --glow-color-1: rgba(192, 108, 209, 0.4); /* Light purple */
+    --glow-color-2: rgba(192, 108, 209, 0.8); /* Brighter purple */
+
+    /* Component Backgrounds (Dark Mode) */
+    --component-bg: #2F2F2F;
+    --component-bg-alt: rgba(255, 255, 255, 0.05);
+    --metric-circle-bg: rgba(255, 255, 255, 0.1);
+    --modal-bg: #262626;
 }
 
 * {
@@ -239,7 +245,21 @@ body {
     font-weight: 600;
     margin-bottom: 0px;
     /* Input bar will provide spacing */
-    color: #fff;
+    color: var(--text-primary);
+    animation: glow-pulse 3s infinite alternate; /* Apply animation */
+}
+
+/* Animation for empty state heading */
+@keyframes glow-pulse {
+    0% {
+        text-shadow: 0 0 5px var(--glow-color-1), 0 0 10px var(--glow-color-1);
+    }
+    50% {
+        text-shadow: 0 0 10px var(--glow-color-1), 0 0 20px var(--glow-color-2), 0 0 30px var(--glow-color-2);
+    }
+    100% {
+        text-shadow: 0 0 5px var(--glow-color-1), 0 0 10px var(--glow-color-1);
+    }
 }
 
 .examples-grid {
@@ -454,7 +474,7 @@ textarea#chat-input::placeholder {
     cursor: pointer;
     list-style: none;
     /* Hide default arrow */
-    background-color: rgba(255, 255, 255, 0.05);
+    background-color: var(--component-bg-alt);
     padding: 8px 12px;
     border-radius: 6px;
     font-size: 0.85rem;
@@ -468,7 +488,7 @@ textarea#chat-input::placeholder {
 }
 
 .message-content details summary:hover {
-    background-color: rgba(255, 255, 255, 0.1);
+    background-color: var(--hover-color);
     color: var(--text-primary);
     border-color: rgba(255, 255, 255, 0.1);
 }
@@ -514,7 +534,7 @@ textarea#chat-input::placeholder {
 .modal-drop-zone:hover,
 .modal-drop-zone.dragover {
     border-color: var(--primary-color);
-    background-color: rgba(16, 163, 127, 0.1);
+    background-color: color-mix(in srgb, var(--primary-color) 10%, transparent);
     color: var(--text-primary);
 }
 
@@ -524,7 +544,7 @@ textarea#chat-input::placeholder {
     min-width: 200px;
     padding: 12px;
     border-radius: 8px;
-    background-color: #2F2F2F;
+    background-color: var(--component-bg);
     border-top: 3px solid transparent;
     display: flex;
     flex-direction: column;
@@ -535,7 +555,7 @@ textarea#chat-input::placeholder {
 
 .reasoning-step:hover {
     transform: translateY(-2px);
-    background-color: #383838;
+    background-color: var(--hover-color);
 }
 
 .reasoning-query {
@@ -593,7 +613,7 @@ textarea#chat-input::placeholder {
     width: 50px;
     height: 50px;
     border-radius: 50%;
-    background: conic-gradient(var(--primary-color) var(--degrees), rgba(255, 255, 255, 0.1) 0deg);
+    background: conic-gradient(var(--primary-color) var(--degrees), var(--metric-circle-bg) 0deg);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -632,14 +652,14 @@ textarea#chat-input::placeholder {
 }
 
 .source-card {
-    background-color: #2F2F2F;
+    background-color: var(--component-bg);
     border-radius: 8px;
     padding: 10px;
     transition: all 0.2s;
 }
 
 .source-card:hover {
-    background-color: #383838;
+    background-color: var(--hover-color);
 }
 
 .source-header {
@@ -696,13 +716,12 @@ textarea#chat-input::placeholder {
 }
 
 .modal {
-    background-color: #262626;
-    /* Slightly lighter than body #212121 */
+    background-color: var(--modal-bg);
     padding: 2rem;
     border-radius: 12px;
     max-width: 500px;
     width: 90%;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--border-color);
     box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.3);
     position: relative;
     z-index: 1001;
@@ -731,14 +750,7 @@ textarea#chat-input::placeholder {
     color: var(--text-primary);
 }
 
-.modal {
-    background-color: #212121;
-    padding: 2rem;
-    border-radius: 12px;
-    max-width: 500px;
-    width: 90%;
-    border: 1px solid var(--border-color);
-}
+
 
 .modal-header {
     margin-bottom: 1.5rem;
@@ -851,4 +863,130 @@ textarea#chat-input::placeholder {
     100% {
         transform: rotate(360deg);
     }
+}
+
+/* Theme-toggle switch */
+.theme-switch {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 26px;
+}
+
+.theme-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #4d4d4d;
+    transition: .4s;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: .4s;
+}
+
+input:checked+.slider {
+    background-color: var(--primary-color);
+}
+
+input:checked+.slider:before {
+    transform: translateX(24px);
+}
+
+.slider.round {
+    border-radius: 34px;
+}
+
+.slider.round:before {
+    border-radius: 50%;
+}
+
+/* Light mode variables */
+body.light-mode {
+    --bg-dark: #f0f2f5;
+    --bg-sidebar: #ffffff;
+    --bg-input: #ffffff;
+    --bg-dropdown: #ffffff;
+    --text-primary: #1c1e21;
+    --text-secondary: #65676b;
+    --border-color: #ced0d4;
+    --hover-color: #e0e2e5; /* Lighter hover for light mode */
+    --user-msg-bg: var(--bg-dark); /* Match main background */
+    --ai-msg-bg: var(--bg-dark); /* Match main background */
+    
+    /* Glow Colors (Light Mode) */
+    --glow-color-1: rgba(162, 79, 178, 0.2); /* Slightly darker purple for contrast */
+    --glow-color-2: rgba(162, 79, 178, 0.5); /* Brighter for highlight */
+
+    /* Component Backgrounds (Light Mode) */
+    --component-bg: #ffffff;
+    --component-bg-alt: #f0f2f5;
+    --metric-circle-bg: #e4e6eb;
+    --modal-bg: #ffffff;
+}
+
+/* Light mode specific styles */
+body.light-mode .sidebar {
+    border-right: 1px solid var(--border-color);
+}
+
+body.light-mode .sidebar-footer {
+    border-top: 1px solid var(--border-color);
+}
+
+body.light-mode .input-box-wrapper {
+    box-shadow: 0 0 0 1px var(--border-color);
+}
+
+body.light-mode .input-box-wrapper:focus-within {
+    background-color: #fff;
+    box-shadow: 0 0 0 2px var(--primary-color);
+}
+
+body.light-mode .modal {
+    background-color: #fff;
+    border: 1px solid var(--border-color);
+}
+
+body.light-mode .close-modal-btn:hover {
+    background-color: #f0f2f5;
+}
+
+body.light-mode .file-item {
+    border-bottom: 1px solid var(--border-color);
+}
+
+body.light-mode ::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+}
+
+body.light-mode .message.user {
+    background-color: var(--user-msg-bg);
+    color: var(--text-primary);
+}
+
+body.light-mode .message.assistant {
+    background-color: var(--ai-msg-bg);
+    color: var(--text-primary);
+}
+
+body.light-mode .avatar.assistant {
+    background-color: #1c1e21;
+    color: #fff;
 }

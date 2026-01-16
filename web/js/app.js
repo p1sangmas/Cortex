@@ -34,6 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Set initial model state
     updateModelUI(currentRagMode);
+    setupTheme();
 });
 
 function setupEventListeners() {
@@ -695,13 +696,44 @@ async function checkSystemStatus() {
             embedModelEl.textContent = data.collection.embedding_model;
         }
         if (ollamaStatusEl) {
-            ollamaStatusEl.textContent = data.ollama_available ? 'Available' : 'Not Detected';
-            ollamaStatusEl.style.color = data.ollama_available ? 'var(--primary-color)' : 'var(--danger-color)';
+            if (data.ollama_available) {
+                ollamaStatusEl.innerHTML = `<i class="fas fa-check-circle" style="color: var(--primary-color);"></i> Available`;
+            } else {
+                ollamaStatusEl.innerHTML = `<i class="fas fa-times-circle" style="color: var(--danger-color);"></i> Not Detected`;
+            }
         }
 
     } catch (err) {
         console.error("System status check failed", err);
+        const ollamaStatusEl = document.getElementById('ollama-status');
+        if (ollamaStatusEl) {
+            ollamaStatusEl.innerHTML = `<i class="fas fa-exclamation-triangle" style="color: var(--danger-color);"></i> Error Checking Status`;
+        }
     }
+}
+
+function setupTheme() {
+    const themeToggle = document.getElementById('theme-toggle');
+    const currentTheme = localStorage.getItem('theme');
+
+    // Default to light mode
+    if (currentTheme === 'dark-mode') {
+        document.body.classList.remove('light-mode');
+        themeToggle.checked = true;
+    } else {
+        document.body.classList.add('light-mode');
+        themeToggle.checked = false;
+    }
+
+    themeToggle.addEventListener('change', function() {
+        if (this.checked) { // "Dark Theme" is checked
+            document.body.classList.remove('light-mode');
+            localStorage.setItem('theme', 'dark-mode');
+        } else { // "Dark Theme" is unchecked
+            document.body.classList.add('light-mode');
+            localStorage.setItem('theme', 'light-mode');
+        }
+    });
 }
 
 function showToast(message, type = 'info') {
