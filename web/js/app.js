@@ -54,14 +54,6 @@ function setupEventListeners() {
         }
     });
 
-    chatInput.addEventListener('input', () => {
-        if (chatInput.value.trim().length > 0) {
-            sendBtn.removeAttribute('disabled');
-        } else {
-            sendBtn.setAttribute('disabled', 'true');
-        }
-    });
-
     sendBtn.addEventListener('click', sendMessage);
 
     // File Upload
@@ -127,7 +119,7 @@ function copySessionId() {
 
 function updateModelUI(mode) {
     // Update Text
-    currentModelText.textContent = mode === 'traditional' ? 'Traditional' : 'Agentic';
+    currentModelText.textContent = mode === 'traditional' ? 'Cortex' : 'Cortex Agentic';
 
     // Update Selected Class in Dropdown
     document.querySelectorAll('.model-option').forEach(opt => {
@@ -143,41 +135,38 @@ function updateModelUI(mode) {
 }
 
 function setupDragAndDrop() {
-    const dropZone = document.body;
-
-    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-        dropZone.addEventListener(eventName, preventDefaults, false);
-    });
-
     function preventDefaults(e) {
         e.preventDefault();
         e.stopPropagation();
-    }
-
-    dropZone.addEventListener('drop', handleDrop, false);
-
-    function handleDrop(e) {
-        const dt = e.dataTransfer;
-        const files = dt.files;
-        handleFiles({ target: { files: files } });
     }
 
     // Modal Drop Zone specific logic
     const modalDropZone = document.getElementById('modal-drop-zone');
     if (modalDropZone) {
         ['dragenter', 'dragover'].forEach(eventName => {
-            modalDropZone.addEventListener(eventName, () => modalDropZone.classList.add('dragover'), false);
+            modalDropZone.addEventListener(eventName, (e) => {
+                preventDefaults(e); // Prevent default for dragover to allow drop
+                modalDropZone.classList.add('dragover');
+            }, false);
         });
         ['dragleave', 'drop'].forEach(eventName => {
-            modalDropZone.addEventListener(eventName, () => modalDropZone.classList.remove('dragover'), false);
+            modalDropZone.addEventListener(eventName, (e) => {
+                preventDefaults(e); // Prevent default for drop
+                modalDropZone.classList.remove('dragover');
+            }, false);
         });
         modalDropZone.addEventListener('drop', (e) => {
             const dt = e.dataTransfer;
             const files = dt.files;
-            handleFiles({ target: { files: files } });
+            handleFiles({
+                target: {
+                    files: files
+                }
+            });
         });
     }
 }
+
 
 // --- Core Logic ---
 
@@ -199,7 +188,9 @@ async function sendMessage() {
     try {
         const response = await fetch(`${API_BASE_URL}/query`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json'
+            },
             body: JSON.stringify({
                 query: text,
                 session_id: sessionId,
@@ -244,9 +235,11 @@ function addMessage(text, role, metadata = null, isError = false) {
     } else {
         // Parse Markdown
         marked.setOptions({
-            highlight: function (code, lang) {
+            highlight: function(code, lang) {
                 const language = highlight.getLanguage(lang) ? lang : 'plaintext';
-                return highlight.highlight(code, { language }).value;
+                return highlight.highlight(code, {
+                    language
+                }).value;
             },
             langPrefix: 'hljs language-'
         });
@@ -341,7 +334,7 @@ function addMessage(text, role, metadata = null, isError = false) {
                     </div>
                 `;
                 contentDiv.appendChild(metaActionsDiv); // Append container to content
-                metaActionsDiv.appendChild(traceDiv);   // Append detail to container
+                metaActionsDiv.appendChild(traceDiv); // Append detail to container
             }
 
             // 3. Evaluation Metrics (Circular)
@@ -438,7 +431,7 @@ function addMessage(text, role, metadata = null, isError = false) {
 
             const btns = feedbackDiv.querySelectorAll('.feedback-btn');
             btns.forEach(btn => {
-                btn.addEventListener('click', function () {
+                btn.addEventListener('click', function() {
                     const rating = this.dataset.rating;
                     submitFeedback(text, metadata.answer, rating);
                     feedbackDiv.innerHTML = '<span style="font-size: 0.8rem; color: var(--primary-color);">Thanks for your feedback!</span>';
@@ -456,7 +449,10 @@ function addMessage(text, role, metadata = null, isError = false) {
 
     // Scroll to bottom
     if (chatMessages) {
-        chatMessages.scrollTo({ top: chatMessages.scrollHeight, behavior: 'smooth' });
+        chatMessages.scrollTo({
+            top: chatMessages.scrollHeight,
+            behavior: 'smooth'
+        });
     }
 }
 
@@ -485,7 +481,10 @@ function addTypingIndicator() {
 
     // Scroll to bottom
     if (chatMessages) {
-        chatMessages.scrollTo({ top: chatMessages.scrollHeight, behavior: 'smooth' });
+        chatMessages.scrollTo({
+            top: chatMessages.scrollHeight,
+            behavior: 'smooth'
+        });
     }
 
     return msgDiv;
@@ -501,23 +500,84 @@ function handleFiles(e) {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
+    // Clear "no documents" message if it exists
+    const noDocsMsg = modalFileList.querySelector('.no-docs-message');
+    if (noDocsMsg) {
+        noDocsMsg.remove();
+    }
+
+
     for (let file of files) {
         if (!file.name.toLowerCase().endsWith('.pdf')) {
             showToast(`Skipping ${file.name}: Only PDFs allowed`, 'warning');
             continue;
         }
-
+        addOrUpdateFileInModal(file, 'processing');
         uploadFile(file);
     }
 
     fileUpload.value = '';
 }
 
-async function uploadFile(file) {
-    showToast(`Uploading ${file.name}...`, 'info'); // 1. Show processing indicator
+function generateFileId(filename) {
+    return `file-${filename.replace(/[^a-zA-Z0-9]/g, '-')}`;
+}
 
+
+function addOrUpdateFileInModal(file, status, message = '') {
+    const fileId = generateFileId(file.filename || file.name);
+    let fileItem = document.getElementById(fileId);
+
+    if (!fileItem) {
+        fileItem = document.createElement('div');
+        fileItem.className = 'file-item';
+        fileItem.id = fileId;
+        modalFileList.appendChild(fileItem);
+    }
+
+    let statusHTML = '';
+    switch (status) {
+        case 'processing':
+            statusHTML = `
+                <div class="file-status">
+                    <i class="fas fa-spinner spinner"></i>
+                    <span>Processing...</span>
+                </div>
+            `;
+            break;
+        case 'success':
+            statusHTML = `
+                <div class="file-status success">
+                    <i class="fas fa-check-circle"></i>
+                    <span>Processed</span>
+                </div>
+            `;
+            break;
+        case 'error':
+            statusHTML = `
+                <div class="file-status error" title="${message}">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <span>Failed</span>
+                </div>
+            `;
+            break;
+    }
+
+    fileItem.innerHTML = `
+        <div style="display:flex; align-items:center; gap:10px;">
+            <i class="fas fa-file-pdf" style="color: var(--danger-color);"></i>
+            <span class="file-name" style="font-weight:500;" title="${file.filename || file.name}">${file.filename || file.name}</span>
+        </div>
+        ${statusHTML}
+    `;
+}
+
+
+async function uploadFile(file) {
     const formData = new FormData();
-    formData.append('file', new Blob([file], { type: 'application/pdf' }), file.name);
+    formData.append('file', new Blob([file], {
+        type: 'application/pdf'
+    }), file.name);
 
     try {
         const response = await fetch(`${API_BASE_URL}/upload`, {
@@ -528,20 +588,18 @@ async function uploadFile(file) {
 
         if (data.error) {
             console.error('Upload failed:', data.error);
-            showToast(`Upload failed: ${data.error}`, 'error');
+            addOrUpdateFileInModal(file, 'error', data.error);
         } else {
             console.log('Upload success:', data);
-            showToast(`${file.name} uploaded successfully`, 'success');
-
-            // 2. Refresh lists immediately
-            await updateProcessedFilesList();
-            updateModalFileList();
+            addOrUpdateFileInModal(file, 'success');
+            await updateProcessedFilesList(); // Refresh the main list
         }
     } catch (err) {
         console.error(err);
-        showToast('Upload failed: Connection error', 'error');
+        addOrUpdateFileInModal(file, 'error', 'Connection error');
     }
 }
+
 
 // Global processed files array to store state
 let processedFiles = [];
@@ -565,25 +623,15 @@ function updateModalFileList() {
     modalFileList.innerHTML = '';
 
     if (processedFiles.length === 0) {
-        modalFileList.innerHTML = '<div style="text-align:center; padding: 20px; color: var(--text-secondary);">No documents uploaded yet.</div>';
+        modalFileList.innerHTML = '<div class="no-docs-message" style="text-align:center; padding: 20px; color: var(--text-secondary);">No documents uploaded yet.</div>';
         return;
     }
 
     processedFiles.forEach(file => {
-        const item = document.createElement('div');
-        item.className = 'file-item';
-        item.innerHTML = `
-            <div style="display:flex; align-items:center; gap:10px;">
-                <i class="fas fa-file-pdf" style="color: var(--danger-color);"></i>
-                <span class="file-name" style="font-weight:500;">${file.filename}</span>
-            </div>
-            <div style="font-size:0.8rem; color:var(--text-secondary);">
-                ${(file.size / 1024).toFixed(1)} KB
-            </div>
-        `;
-        modalFileList.appendChild(item);
+        addOrUpdateFileInModal(file, 'success');
     });
 }
+
 
 // Modal Helpers
 function openModal(modalId) {
@@ -601,7 +649,9 @@ async function clearKnowledgeBase() {
     if (!confirm("Are you sure you want to clear the entire Knowledge Base?")) return;
 
     try {
-        await fetch(`${API_BASE_URL}/collection`, { method: 'DELETE' });
+        await fetch(`${API_BASE_URL}/collection`, {
+            method: 'DELETE'
+        });
         processedFiles = [];
         docCountEl.textContent = '0';
         updateModalFileList();
@@ -618,7 +668,9 @@ async function submitFeedback(query, answer, rating) {
     try {
         await fetch(`${API_BASE_URL}/feedback`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json'
+            },
             body: JSON.stringify({
                 query,
                 answer,
@@ -693,7 +745,7 @@ function showToast(message, type = 'info') {
 
 // Generate Session ID
 function generateSessionId() {
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
         const r = Math.random() * 16 | 0;
         const v = c === 'x' ? r : (r & 0x3 | 0x8);
         return v.toString(16);
