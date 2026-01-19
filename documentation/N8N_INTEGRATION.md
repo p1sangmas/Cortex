@@ -43,17 +43,17 @@ Cortex comes with two pre-built n8n workflows:
 
 ### 1. Web Search Tool (`01-web-search-tool.json`)
 
-**Purpose**: Provides external web search capability using DuckDuckGo API
+**Purpose**: Provides external web search capability using Serper.dev API (Google Search)
 
 **How it works**:
 1. Cortex calls n8n webhook when internal documents lack information
-2. n8n queries DuckDuckGo API
-3. Results are parsed and returned to Cortex
+2. n8n queries Serper.dev API (Google Search with structured results)
+3. Results include Answer Boxes, Knowledge Graphs, and organic search results
 4. User receives synthesized answer combining internal + external sources
 
 **Webhook URL**: `http://cortex-n8n:5678/webhook/web-search`
 
-**API**: Uses DuckDuckGo's free Instant Answer API (no API key required)
+**API**: Uses Serper.dev API (requires API key, free tier: 2,500 searches/month)
 
 **Trigger Conditions** (automatic):
 - No internal documents found for query
@@ -185,8 +185,8 @@ POST http://cortex-n8n:5678/webhook/web-search
     ↓
 n8n Workflow: Web Search Tool
     ├─ Webhook Trigger
-    ├─ HTTP Request (DuckDuckGo API)
-    ├─ Parse Results (JavaScript)
+    ├─ HTTP Request (Serper.dev API - Google Search)
+    ├─ Parse Results (JavaScript - extracts Answer Boxes, Knowledge Graphs, organic results)
     └─ Respond to Webhook
     ↓
 Return to Cortex
@@ -249,16 +249,18 @@ All workflow files are in `n8n-workflows/` directory as JSON files. You can:
 
 ### Adding More Search Providers
 
-To replace DuckDuckGo with another search provider:
+To replace Serper.dev with another search provider:
 
 1. Open `01-web-search-tool.json` workflow in n8n
-2. Click on the **HTTP Request** node
+2. Click on the **Serper.dev Search** HTTP Request node
 3. Update the URL and parameters for your chosen provider:
+   - **DuckDuckGo API**: https://duckduckgo.com/api (free, no API key)
    - **Brave Search API**: https://brave.com/search/api/
    - **SerpAPI**: https://serpapi.com/ (requires API key)
    - **Google Custom Search**: https://developers.google.com/custom-search
 4. Update the **Parse Results** node to handle different response format
-5. Save the workflow
+5. Update the API key in the header parameters (if required)
+6. Save the workflow
 
 ## Troubleshooting
 
@@ -322,16 +324,20 @@ To replace DuckDuckGo with another search provider:
 
 5. Check n8n workflow executions for errors (n8n UI → Executions tab)
 
-### DuckDuckGo API Rate Limiting
+### Serper.dev API Limits
 
-**Problem**: Web searches fail intermittently
+**Problem**: Web searches fail with "quota exceeded" or "invalid API key"
 
-**Cause**: DuckDuckGo Instant Answer API has rate limits
+**Cause**: Serper.dev free tier has limits (2,500 searches/month)
 
 **Solutions**:
-1. Add delay between requests in n8n workflow
-2. Switch to paid search API (Brave, SerpAPI) for production use
-3. Implement caching in n8n workflow (use Set node to store recent results)
+1. **Check API key**: Ensure the API key in workflow is valid
+   - Open n8n → `01-web-search-tool.json` → Serper.dev Search node
+   - Verify `X-API-KEY` header value
+2. **Monitor usage**: Check your Serper.dev dashboard for remaining quota
+3. **Upgrade plan**: Get more searches by upgrading at https://serper.dev/pricing
+4. **Switch provider**: Replace with DuckDuckGo (free) or Brave Search API
+5. **Implement caching**: Use n8n Set node to cache recent search results
 
 ### Webhook Timeout
 
@@ -427,7 +433,12 @@ You can create new Cortex tools that use n8n workflows:
 
 - **n8n Documentation**: https://docs.n8n.io/
 - **n8n Workflow Templates**: https://n8n.io/workflows/
-- **DuckDuckGo API Docs**: https://duckduckgo.com/api
+- **Serper.dev API**: https://serper.dev/ (current web search provider)
+- **Serper.dev Documentation**: https://serper.dev/docs
+- **Alternative Search APIs**:
+  - DuckDuckGo API: https://duckduckgo.com/api
+  - Brave Search API: https://brave.com/search/api/
+  - SerpAPI: https://serpapi.com/
 - **Telegram Bot API**: https://core.telegram.org/bots/api
 - **Cortex GitHub**: (add your repo URL here)
 

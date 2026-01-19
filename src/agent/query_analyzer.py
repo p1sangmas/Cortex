@@ -167,15 +167,28 @@ class QueryAnalyzer:
         """
         prompt = f"""Classify this query's intent. Choose EXACTLY ONE option:
 
+- conversational: Greetings (hi, hello, hey), gratitude (thanks, thank you), acknowledgments (ok, got it, sure), farewells (bye, goodbye), or simple pleasantries
 - factual: Questions about uploaded documents, files, PDFs, or content that the user has provided. Includes queries with "the document", "the file", "this document", "uploaded", or asking about specific documents/policies/reports.
 - external: General knowledge, current events, real-time data, famous people, geography, history, scientific facts, definitions, or information from the internet/Wikipedia that is NOT in user's uploaded documents.
 - comparison: Comparing two or more things (only if explicitly asking to compare)
 - summarization: Asking for a summary or overview (only if explicitly asking to summarize)
 - calculation: Math operations or numerical calculations
 
-IMPORTANT: If the query asks about "the document", "the file", "uploaded documents", or specific documents/policies/reports, it is ALWAYS factual (not external).
+PRIORITY RULES:
+1. Single words like "hi", "hello", "thanks", "ok", "bye" → ALWAYS conversational
+2. Short greetings (2-3 words) without questions → conversational
+3. If query asks about "the document", "the file", "uploaded" → factual (NOT external)
+4. If query asks about general concepts, famous people, current events → external
+5. When unsure between factual/external → choose factual (try internal documents first)
 
 Examples:
+- "hi" → conversational
+- "hello" → conversational
+- "thanks" → conversational
+- "thank you" → conversational
+- "ok" → conversational
+- "ok got it" → conversational
+- "bye" → conversational
 - "What is our remote work policy?" → factual (internal document)
 - "What is the document about?" → factual (asking about uploaded document)
 - "What are the documents about?" → factual (asking about uploaded documents)
@@ -189,7 +202,7 @@ Examples:
 
 Query: "{query}"
 
-Respond with ONLY ONE WORD (factual/external/comparison/summarization/calculation):"""
+Respond with ONLY ONE WORD (conversational/factual/external/comparison/summarization/calculation):"""
 
         response = self.llm_handler.generate(
             prompt,
@@ -198,7 +211,7 @@ Respond with ONLY ONE WORD (factual/external/comparison/summarization/calculatio
         )
 
         # Parse response - extract the last word (more robust parsing)
-        valid_intents = ['factual', 'external', 'comparison', 'summarization', 'calculation']
+        valid_intents = ['conversational', 'factual', 'external', 'comparison', 'summarization', 'calculation']
 
         # Try to find the intent in the response
         response_lower = response.strip().lower()
@@ -236,7 +249,24 @@ Respond with ONLY ONE WORD (factual/external/comparison/summarization/calculatio
         Returns:
             Intent classification
         """
-        query_lower = query.lower()
+        query_lower = query.lower().strip()
+        words = query_lower.split()
+
+        # Conversational intent (greetings, acknowledgments, farewells)
+        conversational_patterns = [
+            'hi', 'hello', 'hey', 'thanks', 'thank you', 'bye', 'goodbye',
+            'ok', 'okay', 'got it', 'understood', 'sure', 'great', 'good',
+            'cool', 'nice', 'awesome', 'perfect'
+        ]
+
+        # Single word conversational
+        if len(words) == 1 and words[0] in conversational_patterns:
+            return 'conversational'
+
+        # Short greetings without question marks (2-3 words)
+        if len(words) <= 3 and '?' not in query:
+            if any(word in conversational_patterns for word in words):
+                return 'conversational'
 
         # Comparison intent
         comparison_keywords = [

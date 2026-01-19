@@ -151,6 +151,10 @@ class AgenticOrchestrator:
                 f"intent={analysis['intent']}"
             )
 
+            # Handle conversational queries (no tools needed)
+            if analysis['intent'] == 'conversational':
+                return self._handle_conversational(query)
+
             # Step 2: Select tools
             selected_tools = self._select_tools(query, analysis, session_context or {})
 
@@ -669,6 +673,34 @@ Selected tools (JSON only):"""
             return str(result.data)
 
         return "No answer available."
+
+    def _handle_conversational(self, query: str) -> AgenticResponse:
+        """Handle conversational queries (greetings, acknowledgments, farewells)"""
+        query_lower = query.lower().strip()
+
+        # Map queries to responses
+        if any(word in query_lower for word in ['hi', 'hello', 'hey']):
+            answer = "Hello! I'm Cortex. How can I help you today? You can ask me questions about your documents."
+        elif any(word in query_lower for word in ['thanks', 'thank you']):
+            answer = "You're welcome! Feel free to ask if you need anything else."
+        elif any(word in query_lower for word in ['bye', 'goodbye']):
+            answer = "Goodbye! Come back anytime you need help with your documents."
+        elif any(word in query_lower for word in ['ok', 'okay', 'got it', 'understood', 'sure']):
+            answer = "Great! Let me know if you have any questions."
+        else:
+            answer = "I'm here to help! You can ask me about your documents or tell me your preferences."
+
+        self.reasoning_trace.append({
+            'step': 'conversational_response',
+            'type': 'greeting/acknowledgment',
+            'no_tools_used': True
+        })
+
+        return AgenticResponse(
+            answer=answer,
+            sources=[],
+            metadata={'intent': 'conversational', 'response_time_ms': 0}
+        )
 
     def _fallback_response(self, query: str, reason: str) -> AgenticResponse:
         """Create fallback response when no tools available"""

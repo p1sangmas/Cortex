@@ -151,8 +151,9 @@ Cortex integrates with **n8n** for powerful, no-code automation:
 
 1. **Web Search Tool** (`01-web-search-tool.json`)
    - Augments internal knowledge with external sources
-   - Uses DuckDuckGo API (no API key required)
-   - Triggered automatically when internal docs lack information
+   - Uses Serper.dev API (Google Search with API key)
+   - Triggered automatically when internal docs lack information (confidence < 0.5)
+   - Returns Answer Boxes, Knowledge Graphs, and organic search results
 
 2. **URL Document Ingestion** (`03-url-document-ingestion.json`)
    - Auto-ingest PDFs from URLs

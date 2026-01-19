@@ -628,7 +628,7 @@ def execute(self, query: str, context: Dict) -> ToolResult:
 - Query mentions current events, dates, external facts
 - Queries with "current", "latest", "today", year references
 
-**Example:** "What's the current stock price of Tesla?" → Calls n8n → DuckDuckGo API → Returns external data
+**Example:** "What's the current stock price of Tesla?" → Calls n8n → Serper.dev API (Google Search) → Returns Answer Boxes, Knowledge Graphs, and search results
 
 **Implementation:**
 ```python
@@ -1849,8 +1849,8 @@ curl -X POST http://localhost:8080/api/query \
 
 **Nodes:**
 1. Webhook Trigger: `/webhook/web-search`
-2. HTTP Request: DuckDuckGo Instant Answer API
-3. Function: Parse and format results
+2. HTTP Request: Serper.dev API (Google Search with structured results)
+3. Function: Parse results (extracts Answer Boxes, Knowledge Graphs, organic results)
 4. Respond to Webhook: Return JSON
 
 **Usage:** Automatically called by WebSearchTool when needed
