@@ -18,7 +18,7 @@ def setup_logging(log_level: str = "INFO"):
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         handlers=[
             logging.StreamHandler(),
-            logging.FileHandler('data/documind.log') if Path('data').exists() else logging.NullHandler()
+            logging.FileHandler('data/cortex.log') if Path('data').exists() else logging.NullHandler()
         ]
     )
 

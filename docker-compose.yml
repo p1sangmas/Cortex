@@ -1,4 +1,4 @@
-# filepath: /Users/fakhrulfauzi/Documents/Projects/DocuMind/docker-compose.yml
+# filepath: docker-compose.yml
 # Docker Compose file for Cortex
 name: cortex
 

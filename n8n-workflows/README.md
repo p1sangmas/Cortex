@@ -198,10 +198,10 @@ Quick Actions:
 
 ```bash
 # Copy workflows to n8n data directory
-docker cp n8n-workflows/01-web-search-tool.json documind-n8n:/home/node/.n8n/
+docker cp n8n-workflows/01-web-search-tool.json cortex-n8n:/home/node/.n8n/
 
 # Restart n8n to load workflows
-docker restart documind-n8n
+docker restart cortex-n8n
 ```
 
 ## Workflow Details
@@ -256,7 +256,7 @@ Check if Command? (/start, /help)
     Send "Processing..." Message
          ↓
     HTTP Request → Cortex API
-    POST http://documind:8080/api/query
+    POST http://cortex:8080/api/query
     Body: {"query": "...", "session_id": "telegram_123", "mode": "agentic"}
          ↓
     Format Response (JavaScript Node)
@@ -330,7 +330,7 @@ curl -X POST http://localhost:5678/webhook/web-search \
 2. Telegram credentials configured in n8n workflow
 3. Cortex API accessible from n8n:
    ```bash
-   docker exec documind-n8n curl http://documind:8080/api/health
+   docker exec cortex-n8n curl http://cortex:8080/api/health
    ```
 
 ### Execution Errors
@@ -366,7 +366,7 @@ curl -X POST http://localhost:5678/webhook/web-search \
       "type": "n8n-nodes-base.httpRequest",
       "parameters": {
         "method": "POST",
-        "url": "http://documind:8080/api/upload",
+        "url": "http://cortex:8080/api/upload",
         "sendBody": true,
         "bodyContentType": "form-data"
       }

@@ -390,7 +390,7 @@ When deploying to production:
 ### Network Security
 
 n8n and Cortex communicate via Docker network `cortex_default`:
-- Internal communication uses container names (`documind`, `cortex-n8n`)
+- Internal communication uses container names (`cortex`, `cortex-n8n`)
 - No external network access required for core functionality
 - Only expose ports you need (5678 for n8n UI, 8080 for Cortex web)
 
