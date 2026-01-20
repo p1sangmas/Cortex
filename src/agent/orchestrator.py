@@ -252,10 +252,12 @@ class AgenticOrchestrator:
             if tools:
                 return tools
 
-        # Intent: Summarization
+        # Intent: Summarization (needs documents first!)
         if intent == 'summarization' or any(kw in query_lower for kw in ['summarize', 'summary', 'overview']):
-            tools = self.tool_registry.get_tools_by_name(['summarization'])
+            # Get both semantic_search (to retrieve docs) and summarization (to summarize them)
+            tools = self.tool_registry.get_tools_by_name(['semantic_search', 'summarization'])
             if tools:
+                self.logger.info(f"Summarization query detected - using retrieval + summarization")
                 return tools
 
         # Intent: External (current events, external facts)
@@ -401,8 +403,17 @@ Selected tools (JSON only):"""
                 tools=tools
             )
 
-        # Parallel: For independent queries or hybrid search
-        if len(tools) > 1 and intent in ['factual', 'summarization']:
+        # Sequential: For summarization (need to retrieve docs first, then summarize)
+        # Check both intent AND if summarization tool is present (keyword-based detection)
+        tool_names = [t.name for t, _ in tools]
+        if intent == 'summarization' or 'summarization' in tool_names:
+            return ExecutionPlan(
+                strategy=ExecutionStrategy.SEQUENTIAL,
+                tools=tools
+            )
+
+        # Parallel: For independent queries or hybrid search (factual only)
+        if len(tools) > 1 and intent in ['factual']:
             return ExecutionPlan(
                 strategy=ExecutionStrategy.PARALLEL,
                 tools=tools

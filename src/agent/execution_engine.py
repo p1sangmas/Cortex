@@ -133,6 +133,11 @@ class ExecutionEngine:
                     current_context['previous_result'] = result.data
                     current_context['previous_citations'] = result.citations
 
+                    # If this was a retrieval tool, make documents available for next tool
+                    # (e.g., summarization needs context_documents)
+                    if tool.name in ['semantic_search', 'keyword_search']:
+                        current_context['context_documents'] = result.data
+
                     self.execution_trace.append({
                         'step': 'tool_success',
                         'tool': tool.name,
